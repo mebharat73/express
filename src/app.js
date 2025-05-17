@@ -37,10 +37,10 @@ const port = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
   res.json({
-    name: "nodejs-20250302",
+    name: "satta-patta.api",
     status: "OK",
     version: "1.1.0",
-    url: "https://node-20250302.vercel.app",
+    url: "https://expresswithnode.vercel.app",
     port: port,
   });
 });
