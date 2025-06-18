@@ -1,5 +1,5 @@
+import dotenv from 'dotenv';
 import express from "express";
-import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -12,6 +12,8 @@ import orderRoutes from "./routes/orderRoute.js";
 import productRoutes from "./routes/productRoute.js";
 import userRoutes from "./routes/userRoute.js";
 import viewRoutes from "./routes/viewRoute.js";
+import sattapattaItemRoutes from './routes/sattapattaItemRoutes.js';
+import sattapattaExchangeOfferRoutes from './routes/sattapattaExchangeOfferRoutes.js';
 
 dotenv.config();
 
@@ -25,8 +27,10 @@ const upload = multer({
 });
 
 app.use(logger);
-
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // or your frontend origin
+  credentials: true,
+}));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -45,11 +49,14 @@ app.get("/", (req, res) => {
   });
 });
 
+// Routes
 app.use("/api/products", upload.array("images", 5), productRoutes);
 app.use("/api/users", upload.single("image"), userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/page", viewRoutes);
+app.use('/api/sattapatta-items', upload.array('imageFiles', 5), sattapattaItemRoutes);
+app.use('/api/exchange-offers', sattapattaExchangeOfferRoutes);
 
 app.listen(port, () => {
   console.log(`Server started at port ${port}...`);

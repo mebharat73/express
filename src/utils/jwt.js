@@ -1,16 +1,19 @@
 import jwt from "jsonwebtoken";
 
 function createJWT(data) {
-  return jwt.sign(data, process.env.JWT_SECRET, {
-    expiresIn: 86400,
-  });
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET must be defined");
+
+  return jwt.sign(data, secret, { expiresIn: "1d" });
 }
 
-async function verifyJWT(authToken) {
-  return await new Promise((resolve, reject) => {
-    jwt.verify(authToken, process.env.JWT_SECRET, (error, data) => {
-      if (error) return reject(error);
+function verifyJWT(token) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET must be defined");
 
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, secret, (err, data) => {
+      if (err) return reject(err);
       resolve(data);
     });
   });

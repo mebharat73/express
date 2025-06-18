@@ -12,19 +12,28 @@ const login = async (req, res) => {
 
     if (!password) return res.status(422).send("Password is required.");
 
-    const data = await authService.login(req.body);
+    const data = await authService.login(req.body); // fetch user from DB
 
-    const formattedData = formatUserData(data);
+    const formattedData = formatUserData(data); // ✅ must include _id
 
-    const token = createJWT(formattedData);
+    const token = createJWT({
+        ...formattedData,
+        _id: data._id,  // explicitly add _id for the token payload
+      });
+ // ✅ token will now include _id
 
-    res.cookie("authToken", token);
+    res.cookie("authToken", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 86400000, // 1 day
+    });
 
     res.json({ ...formattedData, token });
   } catch (error) {
     res.status(error.statusCode || 500).send(error.message);
   }
 };
+
 
 const register = async (req, res) => {
   try {

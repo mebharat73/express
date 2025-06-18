@@ -68,7 +68,11 @@ const getUserById = async (req, res) => {
 
     if (!user) return res.status(404).send("User not found.");
 
-    if (loggedInUser.id != user.id && !user.roles.includes(ROLE_MERCHANT)) {
+    // Fix: Compare logged-in user's role, not target user's role
+    const isOwner = loggedInUser.id === user.id;
+    const isMerchant = loggedInUser.roles.includes(ROLE_MERCHANT);
+
+    if (!isOwner && !isMerchant) {
       return res.status(403).send("Access denied");
     }
 
@@ -77,6 +81,7 @@ const getUserById = async (req, res) => {
     res.status(500).send(error.message);
   }
 };
+
 
 const uploadProfileImage = async (req, res) => {
   const file = req.file;

@@ -1,4 +1,4 @@
-export const ORDER_STATUS_PENDING = "pending";
-export const ORDER_STATUS_CONFIRMED = "confirmed";
-export const ORDER_STATUS_SHIPPED = "shipped";
-export const ORDER_STATUS_DELIVERED = "delivered";
+export const ORDER_STATUS_PENDING = "PENDING";
+export const ORDER_STATUS_CONFIRMED = "CONFIRMED";
+export const ORDER_STATUS_SHIPPED = "SHIPPED";
+export const ORDER_STATUS_DELIVERED = "DELIVERED";

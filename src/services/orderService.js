@@ -7,23 +7,33 @@ import payViaKhalti from "../utils/khalti.js";
 import paymentService from "./paymentService.js";
 
 const getAllOrders = async (query) => {
-  return await Order.find({
-    status: query.status || ORDER_STATUS_PENDING,
-  })
+  const filter = {};
+
+  // Only filter by status if it's passed in the query
+  if (query.status) {
+    filter.status = query.status;
+  }
+
+  return await Order.find(filter)
     .sort({ createdAt: -1 })
     .populate("orderItems.product")
     .populate("user", ["name", "email", "phone", "address"]);
 };
 
+
 const getOrdersByUser = async (query, userId) => {
-  return await Order.find({
-    user: userId,
-    status: query?.status || ORDER_STATUS_PENDING,
-  })
+  const dbQuery = { user: userId };
+
+  if (query?.status) {
+    dbQuery.status = query.status; // ✅ Only include if it's provided
+  }
+
+  return await Order.find(dbQuery)
     .sort({ createdAt: -1 })
     .populate("orderItems.product")
     .populate("user", ["name", "email", "phone", "address"]);
 };
+
 
 const getOrderById = async (id) => {
   const order = await Order.findById(id)

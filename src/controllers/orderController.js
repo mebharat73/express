@@ -1,10 +1,14 @@
 import orderService from "../services/orderService.js";
 
 const getAllOrders = async (req, res) => {
-  const orders = await orderService.getAllOrders(req.query);
+  if (!req.user?.roles?.includes("ADMIN")) {
+    return res.status(403).json({ message: "Access denied" });
+  }
 
+  const orders = await orderService.getAllOrders(req.query);
   res.json(orders);
 };
+
 
 const getOrdersByUser = async (req, res) => {
   const user = req.user;
@@ -59,20 +63,18 @@ const createOrder = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
   const id = req.params.id;
-  const input = req.body;
+  const { status, transactionId } = req.body;
+
+  if (!status) return res.status(422).send("Order status is required.");
 
   try {
-    await orderService.getOrderById(id);
-
-    if (!input.status) return res.status(422).send("Order status is required.");
-
-    const order = await orderService.updateOrderStatus(id, input.status);
-
-    res.json(order);
+    const updatedOrder = await orderService.updateOrderStatus(id, status, transactionId);
+    res.json(updatedOrder);
   } catch (error) {
     res.status(error.statusCode || 500).send(error.message);
   }
 };
+
 
 const deleteOrder = async (req, res) => {
   const id = req.params.id;
