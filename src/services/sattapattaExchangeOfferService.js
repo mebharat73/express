@@ -64,19 +64,27 @@ const exchangeOfferService = {
   getOfferById: async (id) => {
   try {
     return await SattapattaExchangeOffer.findById(id)
-      .populate('offeredBy', 'username email')
+      .populate('offeredBy', 'name email') // requester info
       .populate({
         path: 'itemOffered',
-        populate: { path: 'owner', select: 'username email phone' }
+        populate: {
+          path: 'owner',
+          select: 'name email phone' // 🔑 this is the item owner
+        }
       })
       .populate({
         path: 'itemRequested',
-        populate: { path: 'owner', select: 'username email phone' }
+        populate: {
+          path: 'owner',
+          select: 'name email phone' // this is the requester's item (optional)
+        }
       });
   } catch (error) {
     throw new Error(`Error fetching offer: ${error.message}`);
   }
 },
+
+
 
 
 
@@ -93,31 +101,38 @@ getOffersForUser: async (userId) => {
       { offeredItemOwnerId: userId }
     ]
   })
+    .sort({ createdAt: -1 })
     .populate({
       path: 'itemOffered',
-      select: 'title owner',
+      select: 'title owner imageUrls',
       populate: { path: 'owner', select: 'name email phone' }
     })
     .populate({
       path: 'itemRequested',
-      select: 'title owner',
+      select: 'title owner imageUrls',
       populate: { path: 'owner', select: 'name email phone' }
     })
     .populate('offeredBy', 'name email phone')
     .lean();
 
   return offers.map(offer => ({
-    _id: offer._id.toString(),
-    fromUserName: offer.offeredBy?.name || 'Unknown',
-    fromUserId: offer.offeredBy?._id?.toString(),
-    offeredProductTitle: offer.itemOffered?.title || 'N/A',
-    offeredItemOwnerId: offer.offeredItemOwnerId?.toString() || offer.itemOffered?.owner?._id?.toString() || null,
-    requestedProductTitle: offer.itemRequested?.title || 'N/A',
-    requestedItemOwnerId: offer.requestedItemOwnerId?.toString() || offer.itemRequested?.owner?._id?.toString() || null,
-    requestedItemOwnerEmail: offer.itemRequested?.owner?.email || null,
-    requestedItemOwnerPhone: offer.itemRequested?.owner?.phone || null,
-    status: offer.status,
-    additionalPrice: offer.extraPrice
+      _id: offer._id.toString(),
+  fromUserName: offer.offeredBy?.name || 'Unknown',
+  fromUserId: offer.offeredBy?._id?.toString(),
+  offeredProductTitle: offer.itemOffered?.title || 'N/A',
+  offeredItemOwnerId: offer.offeredItemOwnerId?.toString() || offer.itemOffered?.owner?._id?.toString() || null,
+  offeredItemOwnerEmail: offer.itemOffered?.owner?.email || null,
+  offeredItemOwnerPhone: offer.itemOffered?.owner?.phone || null,
+  offeredItemImage: offer.itemOffered?.imageUrls?.[0] || null, // ✅ New line
+
+  requestedProductTitle: offer.itemRequested?.title || 'N/A',
+  requestedItemOwnerId: offer.requestedItemOwnerId?.toString() || offer.itemRequested?.owner?._id?.toString() || null,
+  requestedItemOwnerEmail: offer.itemRequested?.owner?.email || null,
+  requestedItemOwnerPhone: offer.itemRequested?.owner?.phone || null,
+  requestedItemImage: offer.itemRequested?.imageUrls?.[0] || null, // ✅ New line
+
+  status: offer.status,
+  additionalPrice: offer.extraPrice
   }));
 },
 
