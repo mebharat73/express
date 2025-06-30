@@ -11,6 +11,8 @@ async function uploadFile(files) {
         .upload_stream(
           {
             folder: CLOUDINARY_FOLDER,
+            resource_type: 'auto',  // <-- Important!
+            type: 'upload' // ✅ Correct placement
           },
           (error, data) => {
             if (error) return reject(error);

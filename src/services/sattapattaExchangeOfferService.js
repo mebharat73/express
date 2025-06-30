@@ -161,6 +161,31 @@ getOffersForUser: async (userId) => {
   },
 
 
+  // services/exchangeOfferService.js
+
+    getExchangeItemIds: async () => {
+        try {
+          const offers = await SattapattaExchangeOffer.find({
+            status: { $in: ['pending', 'accepted'] }
+          }).select('itemOffered itemRequested'); // ✅ No populate
+
+          // Extract item IDs
+          const itemIds = new Set();
+          offers.forEach(offer => {
+            itemIds.add(String(offer.itemOffered));
+            itemIds.add(String(offer.itemRequested));
+          });
+
+          return Array.from(itemIds);
+        } catch (error) {
+          throw new Error(`Error fetching exchange item IDs: ${error.message}`);
+        }
+      },
+
+
+
+
+
   
 
   updateOffer: async (id, updateData) => {

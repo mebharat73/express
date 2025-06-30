@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.post('/', auth, exchangeOfferController.createOffer); // Apply auth middleware
 router.get('/received', auth, exchangeOfferController.getOffersReceived);
+router.get('/active-items', exchangeOfferController.getExchangeItemIds);
+
 
 router.get('/', exchangeOfferController.getAllOffers); // No auth needed for getting all offers (public)
 router.get('/my-offers', auth, exchangeOfferController.getOffersByOfferedBy); // Apply auth middleware

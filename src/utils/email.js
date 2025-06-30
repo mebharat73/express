@@ -5,7 +5,7 @@ async function sendEmail(recipient, { subject, body }) {
 
   const { data, error } = await resend.emails.send({
     from: "onboarding@resend.dev",
-    to: [recipient],
+    to: recipient,
     subject,
     html: body,
   });

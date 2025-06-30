@@ -58,6 +58,19 @@ getOffersReceived: async (req, res) => {
     }
   },
 
+
+  // controllers/sattapattaExchangeOfferController.js
+
+  getExchangeItemIds: async (req, res) => {
+    try {
+      const itemIds = await exchangeOfferService.getExchangeItemIds();
+      res.json(itemIds);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+
   updateOffer: async (req, res) => {
     try {
       const updatedOffer = await exchangeOfferService.updateOffer(req.params.id, req.body);
@@ -99,11 +112,22 @@ acceptOffer: async (req, res) => {
     const userId = req.user.id;
 
     const offer = await exchangeOfferService.getOfferById(offerId);
-    if (!offer) return res.status(404).json({ message: 'Offer not found' });
+    if (!offer) {
+      return res.status(404).json({ message: 'Offer not found' });
+    }
 
-    // ✅ Make sure user is the owner of the item being offered
-    const itemOwnerId = offer.itemOffered?.owner?._id?.toString();
-    if (itemOwnerId !== userId) {
+    // Ensure offered item and its owner exist
+    const itemOffered = offer.itemOffered;
+    const itemOwner = itemOffered?.owner;
+
+    const itemOwnerId =
+      typeof itemOwner === 'object' && itemOwner !== null
+        ? itemOwner._id?.toString?.()
+        : typeof itemOwner === 'string'
+        ? itemOwner
+        : null;
+
+    if (!itemOwnerId || itemOwnerId !== userId) {
       return res.status(403).json({ message: 'Not authorized to accept this offer' });
     }
 
@@ -111,39 +135,47 @@ acceptOffer: async (req, res) => {
       return res.status(400).json({ message: `Offer already ${offer.status}` });
     }
 
-    // ✅ Update offer status and item statuses
+    // Update offer and item statuses
     await exchangeOfferService.updateOffer(offerId, { status: 'accepted' });
-    await SattapattaItem.findByIdAndUpdate(offer.itemOffered._id, { status: 'exchanged' });
-    await SattapattaItem.findByIdAndUpdate(offer.itemRequested._id, { status: 'exchanged' });
+    await SattapattaItem.findByIdAndUpdate(itemOffered?._id, { status: 'exchanged' });
+    await SattapattaItem.findByIdAndUpdate(offer.itemRequested?._id, { status: 'exchanged' });
 
-    // ✅ Send email to requester
+    // Email
     const requester = offer.offeredBy;
-    const owner = offer.itemOffered?.owner;
+    const owner = itemOffered?.owner;
 
-    if (requester?.email && owner) {
-      await sendEmail(requester.email, {
-        subject: "✅ Your Sattapatta Exchange Offer Was Accepted",
-        body: `
-          <p>Your exchange offer has been <strong>accepted</strong> by the item owner.</p>
-          <p>Here are the contact details of the item owner:</p>
-          <ul>
-            <li><strong>Name:</strong> ${owner.name}</li>
-            <li><strong>Email:</strong> ${owner.email}</li>
-            <li><strong>Phone:</strong> ${owner.phone || 'Not provided'}</li>
-          </ul>
-          <p>Get in touch with the owner to proceed with the exchange. Thank you for using Sattapatta!</p>
-        `
-      });
+    // 🔒 Safe email send
+    try {
+      if (requester?.email && owner?.name && owner?.email) {
+        await sendEmail(requester.email, {
+          subject: "✅ Your Sattapatta Exchange Offer Was Accepted",
+          body: `
+            <p>Your exchange offer has been <strong>accepted</strong> by the item owner.</p>
+            <p>Here are the contact details of the item owner:</p>
+            <ul>
+              <li><strong>Name:</strong> ${owner.name}</li>
+              <li><strong>Email:</strong> ${owner.email}</li>
+              <li><strong>Phone:</strong> ${owner.phone || 'Not provided'}</li>
+            </ul>
+            <p>Get in touch with the owner to proceed with the exchange. Thank you for using Sattapatta!</p>
+          `
+        });
+      } else {
+        console.warn('Incomplete data for sending email:', { requester, owner });
+      }
+    } catch (emailErr) {
+      console.error('Email send failed:', emailErr.message);
+      // Don't throw - let the flow continue
     }
 
-    // ✅ Return full details to frontend
+    // ✅ Return full data
     res.json({
       _id: offer._id,
       status: 'accepted',
       fromUserId: requester?._id,
       fromUserName: requester?.name,
       offeredProductTitle: offer.itemRequested?.title,
-      requestedProductTitle: offer.itemOffered?.title,
+      requestedProductTitle: itemOffered?.title,
       additionalPrice: offer.extraPrice,
       offeredItemOwnerId: owner?._id,
       offeredItemOwnerEmail: owner?.email,
@@ -151,10 +183,13 @@ acceptOffer: async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error accepting offer:', error);
-    res.status(500).json({ message: error.message });
+    console.error('❌ Error accepting offer:', error);
+    res.status(500).json({ message: 'Failed to accept offer. Please try again.' });
   }
 },
+
+
+
 
 
 
@@ -166,47 +201,77 @@ rejectOffer: async (req, res) => {
     const offerId = req.params.id;
     const userId = req.user.id;
 
-    // 1. Fetch the offer with populated fields
+    // 1. Fetch the offer with necessary population
     const offer = await exchangeOfferService.getOfferById(offerId);
     if (!offer) {
       return res.status(404).json({ message: 'Offer not found' });
     }
 
-    // 2. Authorization: only the owner of the requested item (offeredItemOwnerId) can reject
-    if (offer.offeredItemOwnerId.toString() !== userId) {
+    // 2. Validate itemOffered and owner presence
+    if (!offer.itemOffered || !offer.itemOffered.owner) {
+      return res.status(400).json({ message: 'Invalid offer: offered item or owner missing' });
+    }
+
+    // 3. Extract owner ID safely
+    const itemOwnerRaw = offer.itemOffered.owner;
+    const itemOwnerId =
+      typeof itemOwnerRaw === 'object' && itemOwnerRaw !== null
+        ? itemOwnerRaw._id?.toString?.()
+        : typeof itemOwnerRaw === 'string'
+        ? itemOwnerRaw
+        : null;
+
+    if (!itemOwnerId || itemOwnerId !== userId) {
       return res.status(403).json({ message: 'Not authorized to reject this offer' });
     }
 
-    // 3. Cannot reject already accepted/rejected offers
+    // 4. Ensure offer is still pending
     if (offer.status !== 'pending') {
       return res.status(400).json({ message: `Offer already ${offer.status}` });
     }
 
-    // 4. Mark offer as rejected
-    const updatedOffer = await exchangeOfferService.updateOffer(offerId, { status: 'rejected' });
+    // 5. Update status to rejected
+    await exchangeOfferService.updateOffer(offerId, { status: 'rejected' });
 
-    // 5. Send email to the requester (offeredBy)
-    const recipientEmail = offer.offeredBy?.email;
-    const recipientName = offer.offeredBy?.username || 'user';
+    // 6. Attempt to notify requester via email
+    const requester = offer.offeredBy;
+    const owner = offer.itemOffered.owner;
 
-    if (recipientEmail) {
-      await sendEmail(recipientEmail, {
-        subject: 'Regarding your Sattapatta Exchange Offer',
-        body: `
-          <p>Hello ${recipientName},</p>
-          <p>We're sorry to inform you that your offer has been <strong>rejected</strong> by the item owner.</p>
-          <p>You may browse other items and try again.</p>
-          <p>Thank you for using Sattapatta.</p>
-        `
-      });
+    try {
+      if (requester?.email && owner?.name && owner?.email) {
+        await sendEmail(requester.email, {
+          subject: "ℹ️ Your Sattapatta Exchange Offer Was Not Accepted",
+          body: `
+            <p>Your exchange offer was <strong>not accepted</strong> by the item owner.</p>
+            <p>Here are the contact details of the item owner, in case you’d like to follow up:</p>
+            <ul>
+              <li><strong>Name:</strong> ${owner.name}</li>
+              <li><strong>Email:</strong> ${owner.email}</li>
+              <li><strong>Phone:</strong> ${owner.phone || 'Not provided'}</li>
+            </ul>
+            <p>You can continue browsing other items and make more offers.</p>
+            <p>Thank you for using <strong>Sattapatta</strong>!</p>
+          `
+        });
+      } else {
+        console.warn('Incomplete data for sending rejection email:', { requester, owner });
+      }
+    } catch (emailErr) {
+      console.error('❌ Email send failed:', emailErr.message);
+      // Email failure should not block the rejection process
     }
 
-    res.json(updatedOffer);
+    // 7. Return success response
+    res.json({ message: 'Offer rejected successfully' });
+
   } catch (error) {
-    console.error('Error rejecting offer:', error);
-    res.status(500).json({ message: error.message });
+    console.error('❌ Error rejecting offer:', error);
+    res.status(500).json({ message: 'Failed to reject offer. Please try again.' });
   }
 },
+
+
+
 
 
 
@@ -221,25 +286,51 @@ deleteOffer: async (req, res) => {
       return res.status(404).json({ message: 'Offer not found' });
     }
 
-    // 2. Authorization: only the user who made the offer can delete it
-    if (offer.offeredBy._id.toString() !== userId) {
-      return res.status(403).json({ message: 'You are not authorized to delete this offer.' });
+    // 2. Check if user is involved in the offer
+    const isInvolved = [
+      offer.offeredBy?._id?.toString(),
+      offer.itemOffered?.owner?._id?.toString(),
+      offer.itemRequested?.owner?._id?.toString()
+    ].includes(userId);
+
+    if (!isInvolved) {
+      return res.status(403).json({
+        message: 'You are not authorized to delete this offer.'
+      });
     }
 
-    // 3. Only allow deleting if offer is still pending
-    if (offer.status !== 'pending') {
-      return res.status(400).json({ message: `Cannot delete an offer that is already ${offer.status}.` });
+    // 3. Handle deletion based on status
+    const { status, createdAt } = offer;
+    const now = new Date();
+    const oneMonthInMs = 30 * 24 * 60 * 60 * 1000;
+
+    if (status === 'pending' || status === 'rejected') {
+      await exchangeOfferService.deleteOffer(offerId);
+      return res.status(204).send();
     }
 
-    // 4. Delete the offer
-    await exchangeOfferService.deleteOffer(offerId);
+    if (status === 'accepted') {
+      const createdDate = new Date(createdAt);
+      if (now - createdDate >= oneMonthInMs) {
+        await exchangeOfferService.deleteOffer(offerId);
+        return res.status(204).send();
+      } else {
+        return res.status(403).json({
+          message: "You can't delete the offer currently because your offer is accepted.You can delete it after 1 month"
+        });
+      }
+    }
 
-    res.status(204).send();
+    // Fallback (shouldn't happen)
+    return res.status(400).json({ message: 'Invalid offer status.' });
+
   } catch (error) {
     console.error("Delete offer error:", error);
     res.status(500).json({ message: error.message });
   }
 },
+
+
 
 
 
