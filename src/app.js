@@ -36,7 +36,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.NEXT_PUBLIC_APP_URL,
+    origin: process.env.APP_URL,
     credentials: true,
     methods: ['GET', 'POST'],
   },
@@ -48,7 +48,22 @@ const io = new Server(server, {
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(logger);
-app.use(cors({ origin: process.env.NEXT_PUBLIC_APP_URL , credentials: true }));
+const allowedOrigins = process.env.APP_URL.split(',');
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g. mobile apps, curl)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error(`CORS not allowed for ${origin}`));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.set("view engine", "hbs");
