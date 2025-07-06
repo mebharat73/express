@@ -48,7 +48,11 @@ const io = new Server(server, {
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(logger);
-const allowedOrigins = process.env.APP_URL.split(',');
+const allowedOrigins = [
+  'https://react-with-next-js-q7ee.vercel.app',
+  'http://localhost:3000'
+];
+
 
 app.use(cors({
   origin: function (origin, callback) {
