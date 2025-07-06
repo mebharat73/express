@@ -1,7 +1,5 @@
 import dotenv from 'dotenv';
 import express from "express";
-import http from "http"; // Add this
-import { Server } from "socket.io"; // Add this
 import bodyParser from "body-parser";
 import cors from "cors";
 
@@ -17,7 +15,6 @@ import viewRoutes from "./routes/viewRoute.js";
 import sattapattaItemRoutes from './routes/sattapattaItemRoutes.js';
 import sattapattaExchangeOfferRoutes from './routes/sattapattaExchangeOfferRoutes.js';
 import chatRoutes from './routes/chatRoutes.js'; // Add this
-import ChatMessage from './models/ChatMessage.js'; // Add this
 import contactRoutes from './routes/contactRoutes.js';
 import 'core-js/stable/index.js';
 import 'regenerator-runtime/runtime.js';
@@ -33,34 +30,19 @@ connectDB();
 connectCloudinary();
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin); // ✅ Return only the matched origin
-      } else {
-        callback(new Error('Socket.IO CORS not allowed'));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST'],
-  },
-  allowEIO3: true,
-});
 
 
 
 // Middlewares
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(logger);
+
 const allowedOrigins = [
   'https://react-with-next-js-q7ee.vercel.app',
   'http://localhost:3000'
 ];
 
-
+app.use(logger);
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (e.g. mobile apps, curl)
@@ -102,60 +84,10 @@ app.use('/api/contact', contactRoutes);
 
 
 
-const onlineUsers = {};
-
-io.on('connection', (socket) => {
-  const { userId } = socket.handshake.query;
-
-  if (!userId) {
-    console.log('Socket connected without userId, disconnecting...');
-    socket.disconnect();
-    return;
-  }
-
-  onlineUsers[userId] = socket.id;
-  io.emit('presence', onlineUsers);
-  console.log(`User ${userId} connected`);
-
-  socket.on('getPresence', () => {
-    socket.emit('presence', onlineUsers);
-  });
-
-  socket.on('sendMessage', async (data) => {
-    try {
-      const msg = new ChatMessage(data);
-      await msg.save();
-
-      // Send to recipient if online
-      if (data.to && onlineUsers[data.to]) {
-        io.to(onlineUsers[data.to]).emit('newMessage', msg);
-      }
-      // No need to send back to sender because frontend handles optimistic update
-    } catch (err) {
-      console.error('sendMessage error:', err);
-    }
-  });
-
-  socket.on('typing', ({ to, isTyping }) => {
-    if (to && onlineUsers[to]) {
-      io.to(onlineUsers[to]).emit('typing', { from: userId, isTyping });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    // Remove user from onlineUsers only if this socket.id matches stored one (handle multiple connections)
-    if (onlineUsers[userId] === socket.id) {
-      delete onlineUsers[userId];
-      io.emit('presence', onlineUsers);
-      console.log(`User ${userId} disconnected`);
-    }
-  });
-});
-
 
 
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`REST API running on port ${PORT}`);
 });

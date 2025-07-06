@@ -7,7 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "start-socket": "node src/socketServer.js"
   },
   "author": "Samarajya Shrestha",
   "license": "MIT",
