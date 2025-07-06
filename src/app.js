@@ -36,12 +36,19 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.APP_URL,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, origin); // ✅ Return only the matched origin
+      } else {
+        callback(new Error('Socket.IO CORS not allowed'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST'],
   },
-  allowEIO3: true, // ✅ Add this for IE compatibility
+  allowEIO3: true,
 });
+
 
 
 // Middlewares
