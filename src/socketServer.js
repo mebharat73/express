@@ -1,10 +1,10 @@
-import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import ChatMessage from './models/ChatMessage.js';
-import cors from 'cors';
 
 dotenv.config();
 connectDB();
@@ -17,14 +17,30 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 
+// **Apply CORS to Express endpoints** (health check, etc.)
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS not allowed for origin: ${origin}`));
+  },
+  credentials: true
+}));
+
+// Optional health check route
+app.get('/', (req, res) => {
+  res.send('Socket.IO server is running');
+});
+
+// **Socket.IO with the same allowedOrigins logic**
 const io = new Server(server, {
   cors: {
     origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, origin);
-      } else {
-        callback(new Error('Socket.IO CORS not allowed'));
+        return callback(null, origin);
       }
+      return callback(new Error(`Socket.IO CORS not allowed for origin: ${origin}`));
     },
     credentials: true,
     methods: ['GET', 'POST']
@@ -32,45 +48,20 @@ const io = new Server(server, {
   allowEIO3: true
 });
 
-// Optional health check route
-app.get('/', (req, res) => {
-  res.send('Socket.IO server is running');
-});
-
 const onlineUsers = {};
 
 io.on('connection', (socket) => {
   const { userId } = socket.handshake.query;
-
-  if (!userId) {
-    console.log('Socket connected without userId, disconnecting...');
-    socket.disconnect();
-    return;
-  }
+  if (!userId) return socket.disconnect();
 
   onlineUsers[userId] = socket.id;
   io.emit('presence', onlineUsers);
-  console.log(`User ${userId} connected`);
-
-  socket.on('getPresence', () => {
-    socket.emit('presence', onlineUsers);
-  });
 
   socket.on('sendMessage', async (data) => {
-    try {
-      const msg = new ChatMessage(data);
-      await msg.save();
-      if (data.to && onlineUsers[data.to]) {
-        io.to(onlineUsers[data.to]).emit('newMessage', msg);
-      }
-    } catch (err) {
-      console.error('sendMessage error:', err);
-    }
-  });
-
-  socket.on('typing', ({ to, isTyping }) => {
-    if (to && onlineUsers[to]) {
-      io.to(onlineUsers[to]).emit('typing', { from: userId, isTyping });
+    const msg = new ChatMessage(data);
+    await msg.save();
+    if (data.to && onlineUsers[data.to]) {
+      io.to(onlineUsers[data.to]).emit('newMessage', msg);
     }
   });
 
@@ -78,13 +69,11 @@ io.on('connection', (socket) => {
     if (onlineUsers[userId] === socket.id) {
       delete onlineUsers[userId];
       io.emit('presence', onlineUsers);
-      console.log(`User ${userId} disconnected`);
     }
   });
 });
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT; // must use env variable on Render
 server.listen(PORT, () => {
   console.log(`Socket.IO server running on port ${PORT}`);
 });
-
