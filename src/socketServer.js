@@ -62,12 +62,21 @@ io.on('connection', (socket) => {
   // Broadcast to all others about the updated online user list
   socket.broadcast.emit('presence', onlineUsers);
 
+  socket.on('getPresence', () => {
+    socket.emit('presence', onlineUsers);
+  });
+
   socket.on('sendMessage', async (data) => {
     const msg = new ChatMessage(data);
     await msg.save();
     if (data.to && onlineUsers[data.to]) {
       io.to(onlineUsers[data.to]).emit('newMessage', msg);
     }
+  socket.on('getOnlineUsers', () => {
+  socket.emit('presence', onlineUsers);
+});
+
+
   });
 
   socket.on('disconnect', () => {
