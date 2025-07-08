@@ -55,7 +55,12 @@ io.on('connection', (socket) => {
   if (!userId) return socket.disconnect();
 
   onlineUsers[userId] = socket.id;
-  io.emit('presence', onlineUsers);
+
+  // Send current online users only to the newly connected socket
+  socket.emit('presence', onlineUsers);
+
+  // Broadcast to all others about the updated online user list
+  socket.broadcast.emit('presence', onlineUsers);
 
   socket.on('sendMessage', async (data) => {
     const msg = new ChatMessage(data);
