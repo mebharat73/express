@@ -9,28 +9,34 @@ import { formatProductData } from "../helpers/dataFormatter.js";
 
 const getAllProducts = async (query, userId) => {
   const sort = JSON.parse(query.sort || "{}");
-  const limit = query.limit;
-  const offset = query.offset;
+  const limit = parseInt(query.limit) || 12;
+  const offset = parseInt(query.offset) || 0;
   const filters = {};
 
   const { category, brands, name, min, max } = query;
 
   if (category) filters.category = category;
+
   if (brands) {
-    const brandItems = brands.split(",");
-    filters.brand = { $in: brandItems };
+    const brandItems = brands.split(",").filter(Boolean);
+    if (brandItems.length > 0) {
+      filters.brand = { $in: brandItems };
+    }
   }
+
   if (name) {
     filters.name = { $regex: name, $options: "i" };
   }
-  if (min) filters.price = { $gte: parseFloat(min) };
-  if (max)
-    filters.price = {
-      ...filters.price,
-      $lte: parseFloat(max),
-    };
+
+  if (min || max) {
+    filters.price = {};
+    if (min) filters.price.$gte = parseFloat(min);
+    if (max) filters.price.$lte = parseFloat(max);
+  }
 
   if (userId) filters.createdBy = userId;
+
+  console.log("Filters applied:", filters);
 
   const products = await Product.find(filters)
     .sort(sort)
