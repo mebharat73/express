@@ -4,10 +4,7 @@ import sattapattaItemService from '../services/sattapattaItemService.js';
 const sattapattaItemController = {
   createItem: async (req, res) => {
     try {
-      console.log('Received body:', req.body);
-      console.log('Received files:', req.files);
-      console.log('Authenticated user:', req.user);
-      console.log("Creating item for user:", req.user);
+      
 
       // Ensure req.user is populated correctly
       if (!req.user || !req.user.id) {
@@ -69,10 +66,16 @@ const sattapattaItemController = {
 
   getAllItems: async (req, res) => {
     try {
-      const items = await sattapattaItemService.getAllItems(req.query);
-      res.json(items);
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 18;
+      const skip = (page - 1) * limit;
+
+      const items = await sattapattaItemService.getAllItems({ skip, limit });
+      const totalItems = await sattapattaItemService.countItems();
+
+      res.json({ items, totalItems });
     } catch (error) {
-      console.error('🔥 getAllItems Controller Error:', error); // See full stack
+      console.error('🔥 getAllItems Controller Error:', error);
       res.status(500).json({ message: error.message });
     }
   },
