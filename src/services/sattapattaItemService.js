@@ -25,24 +25,24 @@ const sattapattaItemService = {
     }
   },
 
-  getAllItems: async (query = {}) => {
-    try {
-      const items = await SattapattaItem.find(query)
-        .populate({
-          path: 'owner',
-          select: 'username email',
-          strictPopulate: false, // <— prevents crash on broken refs
-        })
-        .lean();
+ getAllItems: async (query = {}) => {
+  try {
+    const items = await SattapattaItem.find(query)
+      .sort({ createdAt: -1 }) // Sort newest first
+      .populate({
+        path: 'owner',
+        select: 'username email',
+        strictPopulate: false, // prevent crash on broken refs
+      })
+      .lean();
 
-      // Optional: Filter out items that failed to populate owner
-      return items.filter(item => item.owner); 
-    } catch (error) {
-      console.error('🔥 Error fetching items:', error);
-      throw new Error(`Error fetching items: ${error.message}`);
-    }
-  },
-
+    // Optional: Filter out items that failed to populate owner
+    return items.filter(item => item.owner); 
+  } catch (error) {
+    console.error('🔥 Error fetching items:', error);
+    throw new Error(`Error fetching items: ${error.message}`);
+  }
+},
 
 
 
