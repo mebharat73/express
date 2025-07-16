@@ -59,6 +59,15 @@ const sattapattaItemService = {
     }
   },
 
+  findById: async (id) => {
+  try {
+    return await SattapattaItem.findById(id); // No populate
+  } catch (error) {
+    throw new Error(`Error finding item: ${error.message}`);
+  }
+},
+
+
   deleteItem: async (id) => {
     try {
       await SattapattaItem.findByIdAndDelete(id);

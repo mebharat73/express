@@ -91,22 +91,29 @@ const sattapattaItemController = {
   },
 
   deleteItem: async (req, res) => {
-    try {
-      const item = await SattapattaItem.findById(req.params.id);
+  try {
+    const item = await sattapattaItemService.findById(req.params.id);
 
-      if (!item) return res.status(404).json({ message: 'Item not found' });
-
-      // Ensure only the owner can delete
-      if (item.owner.toString() !== req.user.id) {
-        return res.status(403).json({ message: 'Unauthorized' });
-      }
-
-      await item.deleteOne();
-      res.json({ message: 'Item deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
     }
-  },
+
+    // Allow deletion if user is the owner or admin
+    const isOwner = item.owner.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin'; // Ensure your user model includes a role field
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Unauthorized: You cannot delete this item' });
+    }
+
+    await item.deleteOne();
+    res.json({ message: 'Item deleted successfully' });
+
+  } catch (error) {
+    console.error('🔥 Error deleting item:', error);
+    res.status(500).json({ message: error.message });
+  }
+},
 
 
   getItemsByOwner: async (req, res) => {
