@@ -147,7 +147,7 @@ editOwnItem: async (req, res) => {
     // Upload new images with invalidate
 if (req.files && req.files.length > 0) {
   for (const file of req.files) {
-    const result = await new Promise((resolve, reject) => {
+    const uploaded = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
           folder: CLOUDINARY_FOLDER,
@@ -162,7 +162,7 @@ if (req.files && req.files.length > 0) {
       stream.end(file.buffer);
     });
 
-    newImageUrls.push(result.secure_url);
+    newImageUrls.push(uploaded.secure_url); // ✅ Corrected this
   }
 }
 
