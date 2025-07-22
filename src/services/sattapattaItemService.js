@@ -48,16 +48,26 @@ const sattapattaItemService = {
 
 
   updateItem: async (id, updateData) => {
-    try {
-      if (updateData.imageFiles && updateData.imageFiles.length > 0) {
-        const uploadResults = await uploadFile(updateData.imageFiles);
-        updateData.imageUrls = uploadResults.map(result => result.secure_url);
-      }
-      return await SattapattaItem.findByIdAndUpdate(id, updateData, { new: true }).populate('owner', 'username email');
-    } catch (error) {
-      throw new Error(`Error updating item: ${error.message}`);
+  try {
+    // Handle image upload if needed
+    if (updateData.imageFiles && updateData.imageFiles.length > 0) {
+      const uploadResults = await uploadFile(updateData.imageFiles);
+      updateData.imageUrls = uploadResults.map(result => result.secure_url);
     }
-  },
+
+    // 🔧 Force updatedAt to update
+    updateData.updatedAt = new Date();
+
+    // Proceed with update
+    return await SattapattaItem.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).populate('owner', 'username email');
+  } catch (error) {
+    throw new Error(`Error updating item: ${error.message}`);
+  }
+},
+
 
   findById: async (id) => {
   try {
