@@ -144,24 +144,28 @@ editOwnItem: async (req, res) => {
     let newImageUrls = [];
 
     // Handle new file uploads if any
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
-            { folder: 'your_folder_name' }, // Change to your actual Cloudinary folder
-            (error, result) => {
-              if (error) {
-                return reject(new Error('Cloudinary upload failed: ' + error.message));
-              }
-              resolve(result);
-            }
-          );
-          stream.end(file.buffer);
-        });
+    // Upload new images with invalidate
+if (req.files && req.files.length > 0) {
+  for (const file of req.files) {
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: CLOUDINARY_FOLDER,
+          resource_type: 'auto',
+          invalidate: true,
+        },
+        (error, result) => {
+          if (error) return reject(new Error('Cloudinary upload failed: ' + error.message));
+          resolve(result);
+        }
+      );
+      stream.end(file.buffer);
+    });
 
-        newImageUrls.push(result.secure_url);
-      }
-    }
+    newImageUrls.push(result.secure_url);
+  }
+}
+
 
     // Combine existing + new images
     updatedData.imageUrls = [...existingImages, ...newImageUrls];

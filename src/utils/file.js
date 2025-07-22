@@ -12,6 +12,7 @@ async function uploadFile(files) {
           {
             folder: CLOUDINARY_FOLDER,
             resource_type: 'auto',  // <-- Important!
+            invalidate: true, // <--- add this
             type: 'upload' // ✅ Correct placement
           },
           (error, data) => {
