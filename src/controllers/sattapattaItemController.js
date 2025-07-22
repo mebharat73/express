@@ -126,4 +126,63 @@ const sattapattaItemController = {
   }
 };
 
+
+editOwnItem: async (req, res) => {
+  try {
+    const itemId = req.params.id;
+
+    // Fetch the item by ID
+    const item = await sattapattaItemService.getItemById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    // Authorization: Only owner or admin can update
+    const isOwner = item.owner.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Unauthorized: You cannot edit this item' });
+    }
+
+    // Prepare updated data
+    const updatedData = { ...req.body };
+
+    // Handle optional image update
+    if (req.files && req.files.length > 0) {
+      const uploadResults = [];
+
+      for (const file of req.files) {
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: 'your_folder_name' },
+            (error, result) => {
+              if (error) {
+                return reject(new Error('Cloudinary upload failed: ' + error.message));
+              }
+              resolve(result);
+            }
+          );
+          stream.end(file.buffer);
+        });
+
+        uploadResults.push(result);
+      }
+
+      // Replace old image URLs with new ones
+      updatedData.imageUrls = uploadResults.map(result => result.secure_url);
+    }
+
+    // Update the item in DB
+    const updatedItem = await sattapattaItemService.updateItem(itemId, updatedData);
+
+    res.json(updatedItem);
+
+  } catch (error) {
+    console.error('🔥 Error editing item:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+
 export default sattapattaItemController;

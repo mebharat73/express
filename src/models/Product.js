@@ -15,9 +15,14 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0,
   },
+  stock: {
+    type: Number,
+    min: 0, // Optional: ensure stock can't be negative
+    default: 0, // Optional: set a default value if you like
+  },
   createdAt: {
     type: Date,
-    default: Date.now(),
+    default: Date.now,
   },
   rating: {
     type: Number,

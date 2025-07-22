@@ -7,6 +7,7 @@ const router = express.Router();
 
 
 router.post('/', auth, sattapattaItemController.createItem);
+router.put('/edit/:id', auth, sattapattaItemController.editOwnItem);
 router.get('/', sattapattaItemController.getAllItems); // No auth needed for getting all items (public)
 router.get('/my-items', auth, sattapattaItemController.getItemsByOwner); // Apply auth middleware
 router.get('/:id', sattapattaItemController.getItemById); // No auth needed for getting a single item (public)
