@@ -116,91 +116,93 @@ const sattapattaItemController = {
 },
 
   editOwnItem: async (req, res) => {
-    try {
-      const itemId = req.params.id;
+  try {
+    const itemId = req.params.id;
 
-      // Fetch the item by ID
-      const item = await sattapattaItemService.getItemById(itemId);
-      if (!item) {
-        return res.status(404).json({ message: 'Item not found' });
-      }
-
-      // Authorization: Only owner or admin can update
-      const isOwner = item.owner.toString() === req.user.id;
-      const isAdmin = req.user.role === 'admin';
-
-      if (!isOwner && !isAdmin) {
-        return res.status(403).json({ message: 'Unauthorized: You cannot edit this item' });
-      }
-
-      // Parse kept (existing) images from frontend
-      const existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : [];
-
-      // Step 1: Identify and delete removed images from Cloudinary
-      const oldImageUrls = item.imageUrls || [];
-
-      const removedImages = oldImageUrls.filter(url => !existingImages.includes(url));
-
-      const extractPublicId = (url) => {
-        const parts = url.split('/');
-        const folderIndex = parts.findIndex(part => part === CLOUDINARY_FOLDER);
-        if (folderIndex === -1) return null;
-        const publicId = parts.slice(folderIndex).join('/').split('.')[0]; // Remove file extension
-        return publicId;
-      };
-
-      for (const url of removedImages) {
-        const publicId = extractPublicId(url);
-        if (publicId) {
-          try {
-            await cloudinary.uploader.destroy(publicId, { invalidate: true });
-          } catch (error) {
-            console.warn(`❌ Failed to delete Cloudinary image: ${publicId}`, error.message);
-          }
-        }
-      }
-
-      // Step 2: Upload new images (if any)
-      let newImageUrls = [];
-      if (req.files && req.files.length > 0) {
-        for (const file of req.files) {
-          const uploaded = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              {
-                folder: CLOUDINARY_FOLDER,
-                resource_type: 'auto',
-                invalidate: true,
-              },
-              (error, result) => {
-                if (error) return reject(new Error('Cloudinary upload failed: ' + error.message));
-                resolve(result);
-              }
-            );
-            stream.end(file.buffer);
-          });
-
-          newImageUrls.push(uploaded.secure_url);
-        }
-      }
-
-      // Step 3: Prepare final data for update
-      const updatedData = {
-        ...req.body,
-        imageUrls: [...existingImages, ...newImageUrls],
-      };
-
-      // Step 4: Save to DB
-      const updatedItem = await sattapattaItemService.updateItem(itemId, updatedData);
-
-      // Step 5: Return updated item
-      res.json(updatedItem);
-    } catch (error) {
-      console.error('🔥 Error editing item:', error);
-      res.status(500).json({ message: error.message });
+    const item = await sattapattaItemService.getItemById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
     }
-  },
 
+    const isOwner = item.owner.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin';
 
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Unauthorized: You cannot edit this item' });
+    }
+
+    const existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : [];
+
+    const oldImageUrls = item.imageUrls || [];
+    const removedImages = oldImageUrls.filter(url => !existingImages.includes(url));
+
+    const extractPublicId = (url) => {
+      const parts = url.split('/');
+      const folderIndex = parts.findIndex(part => part === CLOUDINARY_FOLDER);
+      if (folderIndex === -1) return null;
+      const publicId = parts.slice(folderIndex).join('/').split('.')[0]; // Remove extension
+      return publicId;
+    };
+
+    console.log(`Removing ${removedImages.length} images from Cloudinary...`);
+    for (const url of removedImages) {
+      const publicId = extractPublicId(url);
+      console.log(`Deleting image: ${url} with publicId: ${publicId}`);
+      if (publicId) {
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+          console.log(`Successfully deleted: ${publicId}`);
+        } catch (error) {
+          console.warn(`❌ Failed to delete Cloudinary image: ${publicId}`, error.message);
+        }
+      }
+    }
+
+    let newImageUrls = [];
+    if (req.files && req.files.length > 0) {
+      console.log(`Uploading ${req.files.length} new images to folder: ${CLOUDINARY_FOLDER}`);
+      for (const file of req.files) {
+        const uploaded = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: CLOUDINARY_FOLDER,
+              resource_type: 'auto',
+              invalidate: true,
+            },
+            (error, result) => {
+              if (error) {
+                console.error('Cloudinary upload error:', error);
+                return reject(new Error('Cloudinary upload failed: ' + error.message));
+              }
+              resolve(result);
+            }
+          );
+          stream.end(file.buffer);
+        });
+
+        console.log('Uploaded image URL:', uploaded.secure_url);
+        newImageUrls.push(uploaded.secure_url);
+      }
+    } else {
+      console.log('No new images to upload.');
+    }
+
+    const updatedData = {
+      ...req.body,
+      imageUrls: [...existingImages, ...newImageUrls],
+    };
+
+    console.log('Updating item with data:', updatedData);
+
+    const updatedItem = await sattapattaItemService.updateItem(itemId, updatedData);
+
+    console.log('Item updated successfully:', updatedItem._id);
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('🔥 Error editing item:', error);
+    res.status(500).json({ message: error.message });
+  }
+},
 
 
   getItemsByOwner: async (req, res) => {
