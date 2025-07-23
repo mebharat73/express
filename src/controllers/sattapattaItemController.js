@@ -150,7 +150,7 @@ if (req.files && req.files.length > 0) {
     const uploaded = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: 'your_folder_name',
+          folder: CLOUDINARY_FOLDER,
           resource_type: 'auto',
           invalidate: true,
         },
