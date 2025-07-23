@@ -1,7 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
 import sattapattaItemService from '../services/sattapattaItemService.js';
 
-const CLOUDINARY_FOLDER = 'your_folder_name'; // 🔁 Set this to your Cloudinary folder
+import uploadFile from '../utils/file.js'; // path to your uploadFile utility
+const CLOUDINARY_FOLDER = "nodejs-20250302";
 
 const sattapattaItemController = {
   createItem: async (req, res) => {
@@ -42,71 +43,65 @@ const sattapattaItemController = {
       res.status(500).json({ message: error.message || 'Internal Server Error' });
     }
   },
-
   editOwnItem: async (req, res) => {
-    try {
-      const itemId = req.params.id;
-      const item = await sattapattaItemService.getItemById(itemId);
-      if (!item) return res.status(404).json({ message: 'Item not found' });
+  try {
+    const userId = req.user.id;
+    const itemId = req.params.id;
+    const {
+      title,
+      description,
+      estimatedValue,
+      condition,
+      status,
+      existingImages
+    } = req.body;
 
-      const isOwner = item.owner.toString() === req.user.id;
-      const isAdmin = req.user.role === 'admin';
-      if (!isOwner && !isAdmin) {
-        return res.status(403).json({ message: 'Unauthorized' });
-      }
+    const existingImageUrls = existingImages ? JSON.parse(existingImages) : [];
 
-      const updatedData = { ...req.body };
+    const item = await SattapattaItem.findById(itemId);
 
-      const existingImages = req.body.existingImages
-        ? JSON.parse(req.body.existingImages)
-        : [];
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+    if (item.owner.toString() !== userId)
+      return res.status(403).json({ message: 'Unauthorized' });
 
-      const removedImages = item.imageUrls.filter(url => !existingImages.includes(url));
+    // Upload new images if any
+    let uploadedImageUrls = [];
 
-      for (const url of removedImages) {
-        const parts = url.split('/');
-        const filenameWithExt = parts[parts.length - 1];
-        const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
-
-        try {
-          await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        } catch (err) {
-          console.warn('⚠️ Cloudinary deletion failed for', publicId, err.message);
-        }
-      }
-
-      let newImageUrls = [];
-      if (req.files && req.files.length > 0) {
-        for (const file of req.files) {
-          const uploaded = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-              {
-                folder: CLOUDINARY_FOLDER,
-                resource_type: 'auto',
-                invalidate: true,
-              },
-              (error, result) => {
-                if (error) return reject(new Error('Cloudinary upload failed: ' + error.message));
-                resolve(result);
-              }
-            );
-            stream.end(file.buffer);
-          });
-
-          newImageUrls.push(uploaded.secure_url);
-        }
-      }
-
-      updatedData.imageUrls = [...existingImages, ...newImageUrls];
-
-      const updatedItem = await sattapattaItemService.updateItem(itemId, updatedData);
-      res.json(updatedItem);
-    } catch (error) {
-      console.error('🔥 Error editing item:', error);
-      res.status(500).json({ message: error.message });
+    if (req.files && req.files.length > 0) {
+      const uploadedFiles = await uploadFile(req.files); // you already have this
+      uploadedImageUrls = uploadedFiles.map((file) => file.secure_url);
     }
-  },
 
+    // Optionally delete removed images from Cloudinary
+    const removedImages = item.imageUrls.filter(
+      (url) => !existingImageUrls.includes(url)
+    );
+
+    for (const url of removedImages) {
+      const filenameWithExt = url.split('/').pop();
+      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+
+      await cloudinary.uploader.destroy(publicId, { invalidate: true });
+    }
+
+    const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
+
+    item.title = title;
+    item.description = description;
+    item.estimatedValue = estimatedValue;
+    item.condition = condition;
+    item.status = status;
+    item.imageUrls = finalImageUrls;
+
+    await item.save();
+
+    res.status(200).json({ message: 'Item updated successfully', item });
+  } catch (error) {
+    console.error('Error in editOwnItem:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+},
+ 
   deleteItem: async (req, res) => {
     try {
       const item = await sattapattaItemService.findById(req.params.id);
