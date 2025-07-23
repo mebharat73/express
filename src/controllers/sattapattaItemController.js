@@ -165,7 +165,7 @@ const sattapattaItemController = {
         const uploaded = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
-              folder: CLOUDINARY_FOLDER,
+              folder: 'your_folder_name',  // <-- hardcoded here for test
               resource_type: 'auto',
               invalidate: true,
             },
