@@ -28,7 +28,7 @@ const sattapattaItemController = {
       for (const file of req.files) {
         const result = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
-            { folder: 'your_folder_name' }, // You can rename this folder
+            { folder: CLOUDINARY_FOLDER }, // You can rename this folder
             (error, result) => {
               if (error) {
                 return reject(new Error('Cloudinary upload failed: ' + error.message));
@@ -165,7 +165,7 @@ const sattapattaItemController = {
         const uploaded = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
-              folder: 'your_folder_name',  // <-- hardcoded here for test
+              folder: CLOUDINARY_FOLDER,  // <-- hardcoded here for test
               resource_type: 'auto',
               invalidate: true,
             },
