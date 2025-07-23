@@ -43,10 +43,16 @@ const sattapattaItemController = {
       res.status(500).json({ message: error.message || 'Internal Server Error' });
     }
   },
-  editOwnItem: async (req, res) => {
+  
+
+
+
+
+editOwnItem: async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
+
     const {
       title,
       description,
@@ -56,9 +62,15 @@ const sattapattaItemController = {
       existingImages
     } = req.body;
 
-    const existingImageUrls = existingImages ? JSON.parse(existingImages) : [];
+    // Parse existing image URLs safely
+    let existingImageUrls = [];
+    try {
+      existingImageUrls = existingImages ? JSON.parse(existingImages) : [];
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid format for existingImages" });
+    }
 
-    const item = await SattapattaItem.findById(itemId);
+    const item = await sattapattaItemService.findById(itemId);
 
     if (!item) return res.status(404).json({ message: 'Item not found' });
     if (item.owner.toString() !== userId)
@@ -68,24 +80,28 @@ const sattapattaItemController = {
     let uploadedImageUrls = [];
 
     if (req.files && req.files.length > 0) {
-      const uploadedFiles = await uploadFile(req.files); // you already have this
-      uploadedImageUrls = uploadedFiles.map((file) => file.secure_url);
+      const uploadedFiles = await uploadFile(req.files);
+      uploadedImageUrls = uploadedFiles.map(file => file.secure_url);
     }
 
-    // Optionally delete removed images from Cloudinary
+    // Identify removed images
     const removedImages = item.imageUrls.filter(
       (url) => !existingImageUrls.includes(url)
     );
 
-    for (const url of removedImages) {
-      const filenameWithExt = url.split('/').pop();
-      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+    // Delete removed images from Cloudinary (parallel deletion)
+    await Promise.all(
+      removedImages.map(async (url) => {
+        const filenameWithExt = url.split('/').pop();
+        const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+        return cloudinary.uploader.destroy(publicId, { invalidate: true });
+      })
+    );
 
-      await cloudinary.uploader.destroy(publicId, { invalidate: true });
-    }
-
+    // Merge final image list
     const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
+    // Update item fields
     item.title = title;
     item.description = description;
     item.estimatedValue = estimatedValue;
@@ -101,7 +117,8 @@ const sattapattaItemController = {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 },
- 
+
+
   deleteItem: async (req, res) => {
     try {
       const item = await sattapattaItemService.findById(req.params.id);
