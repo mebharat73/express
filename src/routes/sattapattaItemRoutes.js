@@ -7,7 +7,7 @@ const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // ensure this is added
 
 
-router.post('/', auth, sattapattaItemController.createItem);
+router.post('/', auth, upload.array('imageFiles', 5), sattapattaItemController.createItem);
 router.put('/edit/:id', auth, upload.array('imageFiles', 5), sattapattaItemController.editOwnItem);
 router.get('/', sattapattaItemController.getAllItems); // No auth needed for getting all items (public)
 router.get('/my-items', auth, sattapattaItemController.getItemsByOwner); // Apply auth middleware
