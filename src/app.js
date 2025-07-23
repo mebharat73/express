@@ -77,7 +77,7 @@ app.use("/api/users", upload.single("image"), userRoutes);
 app.use("/api/products", upload.array("images", 5), productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/page", viewRoutes);
-app.use('/api/sattapatta-items', sattapattaItemRoutes); // ✅ No multer here
+app.use('/api/sattapatta-items', upload.array('imageFiles', 5), sattapattaItemRoutes);
 app.use('/api/exchange-offers', sattapattaExchangeOfferRoutes);
 app.use("/api/chat", chatRoutes); // REST endpoint for fetching chat messages
 app.use('/api/contact', contactRoutes);
