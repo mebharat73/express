@@ -4,10 +4,14 @@ import auth from '../middlewares/auth.js'; // Import your existing auth middlewa
 
 
 const router = express.Router();
+import multer from 'multer';
+const upload = multer({ storage: multer.memoryStorage() });
 
 
-router.post('/', auth, sattapattaItemController.createItem);
-router.put('/edit/:id', auth, sattapattaItemController.editOwnItem);
+router.post('/', auth, upload.array('imageFiles', 5), sattapattaItemController.createItem);
+router.put('/edit/:id', auth, upload.array('imageFiles', 5), sattapattaItemController.editOwnItem);
+// other routes without multer
+
 router.get('/', sattapattaItemController.getAllItems); // No auth needed for getting all items (public)
 router.get('/my-items', auth, sattapattaItemController.getItemsByOwner); // Apply auth middleware
 router.get('/:id', sattapattaItemController.getItemById); // No auth needed for getting a single item (public)
