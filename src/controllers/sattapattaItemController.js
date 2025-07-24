@@ -81,9 +81,23 @@ editOwnItem: async (req, res) => {
     let uploadedImageUrls = [];
 
     if (req.files && req.files.length > 0) {
-      const uploadResults = await uploadFile(req.files);
-      uploadedImageUrls = uploadResults.map(result => result.secure_url);
-    }
+  console.log("Uploading new files...");
+  for (const file of req.files) {
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: CLOUDINARY_FOLDER },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      stream.end(file.buffer);
+    });
+    console.log("Uploaded file URL:", result.secure_url);
+    uploadedImageUrls.push(result.secure_url);
+  }
+}
+
 
     // Identify removed images
     const removedImages = item.imageUrls.filter(
