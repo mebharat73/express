@@ -7,25 +7,24 @@ async function uploadFile(files) {
 
   for (const file of files) {
     const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
+      const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: CLOUDINARY_FOLDER,
           resource_type: 'image',
-          use_filename: true, // Optional: uses original filename
-          unique_filename: true, // Ensures no name collision
+          use_filename: true,
+          unique_filename: true,
           type: 'upload',
         },
         (error, data) => {
           if (error) return reject(error);
           resolve(data);
         }
-      )
+      );
 
-        .end(file.buffer);
-        console.log('✅ Uploaded to Cloudinary:', result.secure_url);
-
+      uploadStream.end(file.buffer); // ✅ Use .end() here
     });
 
+    console.log('✅ Uploaded to Cloudinary:', result.secure_url); // ✅ Now this is in scope
     uploadResults.push(result);
   }
 
