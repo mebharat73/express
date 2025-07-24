@@ -83,7 +83,9 @@ editOwnItem: async (req, res) => {
     if (req.files && req.files.length > 0) {
       const uploadResults = await uploadFile(req.files);
       uploadedImageUrls = uploadResults.map(result => result.secure_url);
+      
     }
+    console.log('Uploaded:', uploadedImageUrls);
 
     // Identify removed images
     const removedImages = item.imageUrls.filter(
