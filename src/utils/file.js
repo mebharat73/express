@@ -7,21 +7,23 @@ async function uploadFile(files) {
 
   for (const file of files) {
     const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader
-        .upload_stream(
-          {
-            folder: CLOUDINARY_FOLDER,
-            resource_type: 'auto',  // <-- Important!
-            invalidate: true, // <--- add this
-            type: 'upload' // ✅ Correct placement
-          },
-          (error, data) => {
-            if (error) return reject(error);
+      cloudinary.uploader.upload_stream(
+        {
+          folder: CLOUDINARY_FOLDER,
+          resource_type: 'image',
+          use_filename: true, // Optional: uses original filename
+          unique_filename: true, // Ensures no name collision
+          type: 'upload',
+        },
+        (error, data) => {
+          if (error) return reject(error);
+          resolve(data);
+        }
+      )
 
-            resolve(data);
-          }
-        )
         .end(file.buffer);
+        console.log('✅ Uploaded to Cloudinary:', result.secure_url);
+
     });
 
     uploadResults.push(result);
