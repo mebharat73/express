@@ -51,19 +51,23 @@ const sattapattaItemController = {
 
 editOwnItem: async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id; // authenticated user ID from middleware
     const itemId = req.params.id;
 
+    // Destructure fields from req.body
     const {
       title,
       description,
       estimatedValue,
       condition,
       status,
-      existingImages
+      existingImages, // JSON string of existing image URLs
     } = req.body;
 
-    // Parse existing image URLs safely
+    console.log('🧾 req.files:', req.files);
+    console.log('🧾 existingImages:', existingImages);
+
+    // Parse existingImages JSON string safely
     let existingImageUrls = [];
     try {
       existingImageUrls = existingImages ? JSON.parse(existingImages) : [];
@@ -71,37 +75,46 @@ editOwnItem: async (req, res) => {
       return res.status(400).json({ message: "Invalid format for existingImages" });
     }
 
+    // Find the item in DB
     const item = await sattapattaItemService.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
 
-    if (!item) return res.status(404).json({ message: 'Item not found' });
-    if (item.owner.toString() !== userId)
+    // Check ownership
+    if (item.owner.toString() !== userId) {
       return res.status(403).json({ message: 'Unauthorized' });
+    }
 
-    // Upload new images using the shared function
+    // Upload new images (if any)
     let uploadedImageUrls = [];
-
     if (req.files && req.files.length > 0) {
-      const uploadResults = await uploadFile(req.files);
+      const uploadResults = await uploadFile(req.files); 
+      // uploadFile should return array of { secure_url, ... }
       uploadedImageUrls = uploadResults.map(result => result.secure_url);
-      
     }
     console.log('Uploaded:', uploadedImageUrls);
 
-    // Identify removed images
-    const removedImages = item.imageUrls.filter(
-      (url) => !existingImageUrls.includes(url)
-    );
+    // Identify removed images (present before but now not kept)
+    const removedImages = item.imageUrls.filter(url => !existingImageUrls.includes(url));
 
     // Delete removed images from Cloudinary
     await Promise.all(
       removedImages.map(async (url) => {
-        const filenameWithExt = url.split('/').pop();
+        // Extract filename without extension for public ID
+        const filenameWithExt = url.split('/').pop(); // get last part of URL
         const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
-        return cloudinary.uploader.destroy(publicId, { invalidate: true });
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+          console.log(`Deleted image from Cloudinary: ${publicId}`);
+        } catch (error) {
+          console.warn(`Failed to delete image ${publicId}:`, error.message);
+          // continue without failing the whole request
+        }
       })
     );
 
-    // Merge image list
+    // Combine kept images and newly uploaded images
     const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
     // Update item fields
@@ -113,6 +126,7 @@ editOwnItem: async (req, res) => {
     item.imageUrls = finalImageUrls;
     item.updatedAt = new Date();
 
+    // Save updated item
     await item.save();
 
     res.status(200).json({ message: 'Item updated successfully', item });
