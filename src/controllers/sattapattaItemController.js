@@ -1,5 +1,4 @@
-import cloudinary from "../config/cloudinary.js"; // ✅ uses pre-configured instance
-
+import { v2 as cloudinary } from 'cloudinary';
 import sattapattaItemService from '../services/sattapattaItemService.js';
 
 import uploadFile from '../utils/file.js'; // path to your uploadFile utility
