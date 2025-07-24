@@ -120,6 +120,7 @@ editOwnItem: async (req, res) => {
       item.condition = condition;
       item.status = status;
       item.imageUrls = finalImageUrls;
+      item.updatedAt = new Date(); // ✅ Add this manually if not auto-updating
 
       await item.save();
 
