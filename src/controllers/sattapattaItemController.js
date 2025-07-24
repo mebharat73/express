@@ -80,7 +80,7 @@ editOwnItem: async (req, res) => {
     // Upload new images using the shared function
     let uploadedImageUrls = [];
 
-    if (req.files && req.files.length > 0) {
+if (req.files && req.files.length > 0) {
   console.log("Uploading new files...");
   for (const file of req.files) {
     const result = await new Promise((resolve, reject) => {
@@ -93,7 +93,7 @@ editOwnItem: async (req, res) => {
       );
       stream.end(file.buffer);
     });
-    console.log("Uploaded file URL:", result.secure_url);
+    console.log("Uploaded file info:", result);  // <---- log full result object
     uploadedImageUrls.push(result.secure_url);
   }
 }
