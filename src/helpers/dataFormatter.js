@@ -18,10 +18,9 @@ export function formatProductData(data) {
     createdAt: data.createdAt,
     description: data.description,
     id: data._id,
+     _id: data._id, // ✅ for backend operations
     imageUrls: data.imageUrls,
     name: data.name,
     price: data.price,
-    // ✅ Include product owner
-    ownerId: data.createdBy?.toString(), // Ensure it's a string if it's an ObjectId
   };
 }
