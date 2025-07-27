@@ -66,19 +66,25 @@ const createProduct = async (data, files, userId) => {
 };
 
 const updateProduct = async (id, data, files) => {
-  const uploadedFiles = await uploadFile(files);
+  let uploadedFiles = [];
 
-  return await Product.findByIdAndUpdate(
-    id,
-    {
-      ...data,
-      imageUrls: uploadedFiles.map((item) => item?.url),
-    },
-    {
-      new: true,
-    }
-  );
+  if (files && Array.isArray(files) && files.length > 0) {
+    uploadedFiles = await uploadFile(files);
+  }
+
+  const updateFields = {
+    ...data,
+  };
+
+  // Only update imageUrls if new images were uploaded
+  if (uploadedFiles.length > 0) {
+    updateFields.imageUrls = uploadedFiles.map((item) => item?.url);
+  }
+
+  return await Product.findByIdAndUpdate(id, updateFields, { new: true });
 };
+
+
 
 const deleteProduct = async (id) => {
   await Product.findByIdAndDelete(id);
