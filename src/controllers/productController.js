@@ -76,8 +76,18 @@ const updateProduct = async (req, res) => {
 
 const deleteProduct = async (req, res) => {
   const id = req.params.id;
+  const user = req.user;
 
   try {
+    const product = await productService.getProductById(id);
+
+    if (!product) return res.status(404).send("Product not found.");
+
+    // Check ownership or admin role
+    if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
+      return res.status(403).send("Access denied");
+    }
+
     await productService.deleteProduct(id);
 
     res.send(`Product delete successful of id: ${id}`);
@@ -85,6 +95,7 @@ const deleteProduct = async (req, res) => {
     res.status(500).send(error.message);
   }
 };
+
 
 const getCategories = async (req, res) => {
   const categories = await productService.getCategories();
