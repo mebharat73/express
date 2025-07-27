@@ -21,5 +21,7 @@ export function formatProductData(data) {
     imageUrls: data.imageUrls,
     name: data.name,
     price: data.price,
+    // ✅ Include product owner
+    ownerId: data.createdBy?.toString(), // Ensure it's a string if it's an ObjectId
   };
 }
