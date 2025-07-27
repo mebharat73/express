@@ -47,10 +47,11 @@ const getAllProducts = async (query, userId) => {
 };
 
 const getProductById = async (id) => {
-  const product = await Product.findById(id);
+  const product = await Product.findById(id).populate('createdBy', '_id');
 
   return formatProductData(product);
 };
+
 
 const createProduct = async (data, files, userId) => {
   const uploadedFiles = await uploadFile(files);

@@ -61,9 +61,10 @@ const updateProduct = async (req, res) => {
 
     if (!product) return res.status(404).send("Product not found.");
 
-    if (product.createdBy != user.id && !user.roles.includes(ROLE_ADMIN)) {
+    if (product.createdBy.toString() !== user.id && !user.roles.includes(ROLE_ADMIN)) {
       return res.status(403).send("Access denied");
     }
+
 
     const data = await productService.updateProduct(id, input, files);
 

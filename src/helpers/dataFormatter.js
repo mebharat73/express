@@ -18,9 +18,10 @@ export function formatProductData(data) {
     createdAt: data.createdAt,
     description: data.description,
     id: data._id,
-     _id: data._id, // ✅ for backend operations
+    _id: data._id, // for backend use if needed
     imageUrls: data.imageUrls,
     name: data.name,
     price: data.price,
+    createdBy: data.createdBy?._id || data.createdBy || null, // <-- add this line
   };
 }
