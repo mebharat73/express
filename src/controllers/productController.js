@@ -57,29 +57,33 @@ const updateProduct = async (req, res) => {
   const input = req.body;
 
   try {
+    // Get existing product from DB
     const product = await productService.getProductById(id);
     if (!product) return res.status(404).send("Product not found.");
 
+    // Authorization check
     if (product.createdBy.toString() !== user.id && !user.roles.includes(ROLE_ADMIN)) {
       return res.status(403).send("Access denied");
     }
 
-    // Handle existing images
+    // Parse and validate existing images
     let existingImageUrls = [];
-    try {
-      existingImageUrls = input.existingImages ? JSON.parse(input.existingImages) : [];
-    } catch (err) {
-      return res.status(400).json({ message: "Invalid format for existingImages" });
+    if (input.existingImages) {
+      try {
+        existingImageUrls = JSON.parse(input.existingImages);
+      } catch (err) {
+        return res.status(400).json({ message: "Invalid format for existingImages" });
+      }
     }
 
-    // Upload new files if provided
+    // Upload new images
     let uploadedImageUrls = [];
-    if (files && files.length > 0) {
-      const uploadResults = await uploadFile(files); // returns [{ secure_url, ... }]
-      uploadedImageUrls = uploadResults.map(result => result.secure_url);
+    if (files?.length) {
+      const uploadResults = await uploadFile(files); // should return [{ secure_url }]
+      uploadedImageUrls = uploadResults.map(result => result.secure_url || result.url);
     }
 
-    // Identify removed images (present before, now not included)
+    // Identify and remove old images from Cloudinary
     const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
     await Promise.all(
       removedImages.map(async (url) => {
@@ -87,30 +91,48 @@ const updateProduct = async (req, res) => {
         const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
         try {
           await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        } catch (error) {
-          console.warn(`Failed to delete image ${publicId}:`, error.message);
+        } catch (err) {
+          console.warn(`Failed to delete image ${publicId}:`, err.message);
         }
       })
     );
 
-    // Final image list = kept + newly uploaded
+    // Combine final image list
     const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
-    // Prepare the updated product data
-    const updatedData = {
-      ...input,
-      imageUrls: finalImageUrls,
-      updatedAt: new Date()
-    };
+    // Filter and cast allowed fields
+    const allowedFields = ['title', 'name', 'price', 'stock', 'brand', 'category', 'description'];
+    const cleanedData = {};
+    allowedFields.forEach(field => {
+      if (input[field] !== undefined) {
+        if (['price', 'stock'].includes(field)) {
+          cleanedData[field] = parseFloat(input[field]); // Ensure proper number type
+        } else {
+          cleanedData[field] = input[field];
+        }
+      }
+    });
 
-    const data = await productService.updateProduct(id, updatedData);
+    cleanedData.imageUrls = finalImageUrls;
+    cleanedData.updatedAt = new Date();
 
-    res.send(data);
+    // Final log before saving
+    console.log("Updating product with data:", cleanedData);
+
+    // Update DB
+    const data = await productService.updateProduct(id, cleanedData);
+
+    res.status(200).json(data);
   } catch (error) {
-    console.error("Error in updateProduct:", error);
-    res.status(500).send(error.message);
+    console.error("Error in updateProduct:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    res.status(500).send("Internal Server Error");
   }
 };
+
 
 
 const deleteProduct = async (req, res) => {

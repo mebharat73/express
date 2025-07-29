@@ -67,8 +67,9 @@ const createProduct = async (data, files, userId) => {
 };
 
 const updateProduct = async (id, data) => {
-  return await Product.findByIdAndUpdate(id, data, { new: true });
+  return await Product.findByIdAndUpdate(id, data, { new: true, runValidators: true });
 };
+
 
 
 
