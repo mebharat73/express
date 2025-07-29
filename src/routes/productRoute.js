@@ -16,6 +16,8 @@ import roleBasedAuth from "../middlewares/roleBasedAuth.js";
 import { ROLE_ADMIN, ROLE_MERCHANT } from "../constants/roles.js";
 
 const router = express.Router();
+import multer from "multer";
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * URL: /api/products
@@ -52,7 +54,14 @@ router.post("/", auth, roleBasedAuth(ROLE_MERCHANT), createProduct);
  * Method: PUT
  * Update product
  */
-router.put("/:id", auth, roleBasedAuth(ROLE_MERCHANT), updateProduct);
+router.put(
+  "/:id",
+  auth,
+  roleBasedAuth(ROLE_MERCHANT),
+  upload.array("imageFiles", 5), // 👈 Use same field name as in frontend FormData
+  updateProduct
+);
+
 
 /**
  * URL: /api/products/:id
