@@ -1,8 +1,10 @@
 import { ROLE_ADMIN } from "../constants/roles.js";
 import { formatProductData } from "../helpers/dataFormatter.js";
 import productService from "../services/productService.js";
+import Product from "../models/Product.js"
 import uploadFile from '../utils/file.js'; // path to your uploadFile utility
 const CLOUDINARY_FOLDER = "nodejs-20250302";
+
 
 const getAllProducts = async (req, res) => {
   const products = await productService.getAllProducts(req.query);
