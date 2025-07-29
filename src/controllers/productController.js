@@ -59,16 +59,18 @@ const updateProduct = async (req, res) => {
   const input = req.body;
 
   try {
-    // Get product from DB
+    // Step 1: Fetch existing product
     const product = await productService.getProductById(id);
     if (!product) return res.status(404).json({ message: "Product not found." });
 
-    // Check permissions
-    if (product.createdBy.toString() !== user.id && !user.roles.includes(ROLE_ADMIN)) {
+    // Step 2: Authorization
+    const isOwner = product.createdBy.toString() === user.id;
+    const isAdmin = user.roles.includes(ROLE_ADMIN);
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Parse existing images
+    // Step 3: Parse existing image URLs (if provided)
     let existingImageUrls = [];
     try {
       if (input.existingImages) {
@@ -80,54 +82,54 @@ const updateProduct = async (req, res) => {
       return res.status(400).json({ message: "Invalid format for existingImages" });
     }
 
-    // Upload new files to Cloudinary
+    // Step 4: Upload new images to Cloudinary
     let uploadedImageUrls = [];
-    if (files?.length) {
-      const uploadResults = await uploadFile(files); // Should return [{ secure_url }]
-      uploadedImageUrls = uploadResults.map(result => result.secure_url || result.url);
+    if (files?.length > 0) {
+      const uploadResults = await uploadFile(files); // expects [{ secure_url }]
+      uploadedImageUrls = uploadResults.map(file => file.secure_url);
     }
 
-    // Identify removed images
+    // Step 5: Identify and delete removed images from Cloudinary
     const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
-
-    // Delete removed images from Cloudinary
     await Promise.all(
       removedImages.map(async (url) => {
-        const filenameWithExt = url.split('/').pop();
-        const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+        const filename = url.split("/").pop().split(".")[0];
+        const publicId = `${CLOUDINARY_FOLDER}/${filename}`;
         try {
           await cloudinary.uploader.destroy(publicId, { invalidate: true });
           console.log(`✅ Deleted: ${publicId}`);
         } catch (err) {
-          console.warn(`❌ Failed to delete ${publicId}: ${err.message}`);
+          console.warn(`⚠️ Failed to delete ${publicId}: ${err.message}`);
         }
       })
     );
 
-    // Final image list
+    // Step 6: Combine final image URLs
     const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
-    // Update fields safely
-    const allowedFields = ['title', 'name', 'price', 'stock', 'brand', 'category', 'description'];
-    allowedFields.forEach(field => {
+    // Step 7: Update allowed fields
+    const allowedFields = [
+      "title", "name", "price", "stock", "brand", "category", "description"
+    ];
+    for (const field of allowedFields) {
       if (input[field] !== undefined) {
-        if (['price', 'stock'].includes(field)) {
-          product[field] = parseFloat(input[field]);
-        } else {
-          product[field] = input[field];
-        }
+        product[field] = ["price", "stock"].includes(field)
+          ? parseFloat(input[field])
+          : input[field];
       }
-    });
+    }
 
     product.imageUrls = finalImageUrls;
     product.updatedAt = new Date();
 
+    // Step 8: Save and respond
     await product.save();
 
     res.status(200).json({ message: "Product updated successfully", product });
+
   } catch (error) {
     console.error("❌ Error in updateProduct:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

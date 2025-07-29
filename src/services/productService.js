@@ -66,14 +66,24 @@ const createProduct = async (data, files, userId) => {
   });
 };
 
-// services/productService.js
-const updateProduct = async (id, updatedProduct) => {
-  // Not needed anymore since product.save() is called in controller
-  return updatedProduct.save(); // Only needed if you want to move `.save()` back into service
+const updateProduct = async (id, data, files) => {
+  let uploadedFiles = [];
+
+  if (files && Array.isArray(files) && files.length > 0) {
+    uploadedFiles = await uploadFile(files);
+  }
+
+  const updateFields = {
+    ...data,
+  };
+
+  // Only update imageUrls if new images were uploaded
+  if (uploadedFiles.length > 0) {
+    updateFields.imageUrls = uploadedFiles.map((item) => item?.url);
+  }
+
+  return await Product.findByIdAndUpdate(id, updateFields, { new: true });
 };
-
-
-
 
 
 
