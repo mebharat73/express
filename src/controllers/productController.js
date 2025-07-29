@@ -60,8 +60,9 @@ const updateProduct = async (req, res) => {
 
   try {
     // Step 1: Fetch existing product
-    const product = await productService.getProductById(id);
-    if (!product) return res.status(404).json({ message: "Product not found." });
+    const product = await Product.findById(id);
+if (!product) return res.status(404).json({ message: "Product not found." });
+
 
     // Step 2: Authorization
     const isOwner = product.createdBy.toString() === user.id;
