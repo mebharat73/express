@@ -58,21 +58,60 @@ const updateProduct = async (req, res) => {
 
   try {
     const product = await productService.getProductById(id);
-
     if (!product) return res.status(404).send("Product not found.");
 
     if (product.createdBy.toString() !== user.id && !user.roles.includes(ROLE_ADMIN)) {
       return res.status(403).send("Access denied");
     }
 
+    // Handle existing images
+    let existingImageUrls = [];
+    try {
+      existingImageUrls = input.existingImages ? JSON.parse(input.existingImages) : [];
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid format for existingImages" });
+    }
 
-    const data = await productService.updateProduct(id, input, files);
+    // Upload new files if provided
+    let uploadedImageUrls = [];
+    if (files && files.length > 0) {
+      const uploadResults = await uploadFile(files); // returns [{ secure_url, ... }]
+      uploadedImageUrls = uploadResults.map(result => result.secure_url);
+    }
+
+    // Identify removed images (present before, now not included)
+    const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
+    await Promise.all(
+      removedImages.map(async (url) => {
+        const filenameWithExt = url.split('/').pop();
+        const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+        } catch (error) {
+          console.warn(`Failed to delete image ${publicId}:`, error.message);
+        }
+      })
+    );
+
+    // Final image list = kept + newly uploaded
+    const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
+
+    // Prepare the updated product data
+    const updatedData = {
+      ...input,
+      imageUrls: finalImageUrls,
+      updatedAt: new Date()
+    };
+
+    const data = await productService.updateProduct(id, updatedData);
 
     res.send(data);
   } catch (error) {
+    console.error("Error in updateProduct:", error);
     res.status(500).send(error.message);
   }
 };
+
 
 const deleteProduct = async (req, res) => {
   const id = req.params.id;
