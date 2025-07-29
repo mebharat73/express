@@ -48,7 +48,8 @@ router.get("/:id", getProductById);
  * Method: POST
  * Create product
  */
-router.post("/", auth, roleBasedAuth(ROLE_MERCHANT), createProduct);
+router.post("/", auth, roleBasedAuth(ROLE_MERCHANT), upload.array('imageFiles', 5), createProduct);
+
 
 /**
  * URL: /api/products/:id
