@@ -55,7 +55,8 @@ router.post("/", auth, roleBasedAuth(ROLE_MERCHANT), createProduct);
  * Method: PUT
  * Update product
  */
-router.put("/:id", auth,upload.array('imageFiles', 5), updateProduct);
+router.put("/:id", auth, roleBasedAuth(ROLE_MERCHANT), upload.array('imageFiles', 5), updateProduct);
+
 
 
 

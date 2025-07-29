@@ -66,9 +66,12 @@ const createProduct = async (data, files, userId) => {
   });
 };
 
-const updateProduct = async (id, data) => {
-  return await Product.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+// services/productService.js
+const updateProduct = async (id, updatedProduct) => {
+  // Not needed anymore since product.save() is called in controller
+  return updatedProduct.save(); // Only needed if you want to move `.save()` back into service
 };
+
 
 
 
