@@ -74,7 +74,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", upload.single("image"), userRoutes);
-app.use("/api/products", upload.array("imageFiles", 5), productRoutes);
+app.use("/api/products", productRoutes);
 
 app.use("/api/orders", orderRoutes);
 app.use("/page", viewRoutes);
