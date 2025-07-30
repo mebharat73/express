@@ -96,12 +96,19 @@ const checkoutOrder = async (req, res) => {
 
   try {
     const order = await orderService.checkoutOrder(id, input);
-
     res.json(order);
   } catch (error) {
-    res.status(error.statusCode || 500).send(error.message);
+    console.error("CheckoutOrder error:", error);
+
+    // Send detailed error info only in development environment
+    const isDev = process.env.NODE_ENV === "development";
+    res.status(error.statusCode || 500).json({
+      message: error.message || "Internal Server Error",
+      stack: isDev ? error.stack : undefined,  // send stack trace only in dev
+    });
   }
 };
+
 
 const confirmOrder = async (req, res) => {
   const id = req.params.id;
