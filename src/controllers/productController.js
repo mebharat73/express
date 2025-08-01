@@ -137,40 +137,41 @@ if (!product) return res.status(404).json({ message: "Product not found." });
 };
 
 const deleteProduct = async (req, res) => {
+  const id = req.params.id;
+  const user = req.user;
+
   try {
-    const product = await productService.getProductById(req.params.id);
-    if (!product) return res.status(404).json({ message: 'Product not found' });
+    const product = await productService.getProductById(id);
 
-    const isOwner = product.createdBy.toString() === req.user.id;
-    const isAdmin = req.user.roles?.includes('admin'); // Adjust if your role system differs
+    if (!product) return res.status(404).send("Product not found.");
 
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: 'Unauthorized: You cannot delete this product' });
+    // Check ownership or admin role
+    if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
+      return res.status(403).send("Access denied");
     }
 
-    // 🔥 Delete all Cloudinary images associated with this product
+    // Delete images from Cloudinary
     for (const url of product.imageUrls || []) {
-      const filenameWithExt = url.split('/').pop(); // e.g. image_xyz.jpg
-      const filenameWithoutExt = filenameWithExt.split('.')[0]; // e.g. image_xyz
-      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithoutExt}`;
+      const parts = url.split('/');
+      const filenameWithExt = parts[parts.length - 1];
+      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
 
       try {
         await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        console.log(`✅ Deleted from Cloudinary: ${publicId}`);
+        console.log(`Deleted Cloudinary image: ${publicId}`);
       } catch (err) {
-        console.warn(`⚠️ Failed to delete image ${publicId}:`, err.message);
+        console.warn(`Failed to delete Cloudinary image: ${publicId}`, err.message);
       }
     }
 
-    await product.deleteOne(); // OR productService.deleteProduct(product._id)
-    res.json({ message: '✅ Product deleted successfully' });
+    // Delete product from DB
+    await productService.deleteProduct(id);
 
+    res.send(`Product delete successful of id: ${id}`);
   } catch (error) {
-    console.error('🔥 Error deleting product:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).send(error.message);
   }
 };
-
 
 const getCategories = async (req, res) => {
   const categories = await productService.getCategories();
