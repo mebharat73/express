@@ -5,12 +5,6 @@ import Product from "../models/Product.js"
 import uploadFile from '../utils/file.js'; // path to your uploadFile utility
 const CLOUDINARY_FOLDER = "nodejs-20250302";
 
-const getPublicIdFromUrl = (url) => {
-  // Extracts publicId like: "nodejs-20250302/image_name_xyz123"
-  const match = url.match(/upload\/(?:v\d+\/)?(.+?)\.(jpg|jpeg|png|webp|gif)$/i);
-  return match ? match[1] : null;
-};
-
 
 const getAllProducts = async (req, res) => {
   const products = await productService.getAllProducts(req.query);
@@ -143,50 +137,39 @@ if (!product) return res.status(404).json({ message: "Product not found." });
 };
 
 const deleteProduct = async (req, res) => {
-  const id = req.params.id;
-  const user = req.user;
-
   try {
-    const product = await productService.getProductById(id);
+    const product = await productService.getProductById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found." });
-    }
-
-    const isOwner = product.createdBy.toString() === user.id;
-    const isAdmin = user.roles.includes(ROLE_ADMIN); // or just "ADMIN" if not using constants
+    const isOwner = product.createdBy.toString() === req.user.id;
+    const isAdmin = req.user.roles?.includes('admin'); // Adjust if your role system differs
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: 'Unauthorized: You cannot delete this product' });
     }
 
-    // 🔥 Delete associated Cloudinary images
+    // 🔥 Delete all Cloudinary images associated with this product
     for (const url of product.imageUrls || []) {
-      const publicId = getPublicIdFromUrl(url);
-      if (!publicId) {
-        console.warn("⚠️ Could not extract publicId from URL:", url);
-        continue;
-      }
+      const filenameWithExt = url.split('/').pop(); // e.g. image_xyz.jpg
+      const filenameWithoutExt = filenameWithExt.split('.')[0]; // e.g. image_xyz
+      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithoutExt}`;
 
       try {
         await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        console.log("✅ Deleted Cloudinary image:", publicId);
+        console.log(`✅ Deleted from Cloudinary: ${publicId}`);
       } catch (err) {
-        console.warn("⚠️ Cloudinary deletion failed for", publicId, err.message);
+        console.warn(`⚠️ Failed to delete image ${publicId}:`, err.message);
       }
     }
 
-    // 🗑 Delete the product from DB
-    await productService.deleteProduct(id);
-
-    res.json({ message: `✅ Product deleted successfully with ID: ${id}` });
+    await product.deleteOne(); // OR productService.deleteProduct(product._id)
+    res.json({ message: '✅ Product deleted successfully' });
 
   } catch (error) {
     console.error('🔥 Error deleting product:', error);
     res.status(500).json({ message: error.message });
   }
 };
-
 
 
 const getCategories = async (req, res) => {
