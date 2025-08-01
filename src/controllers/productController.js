@@ -143,18 +143,35 @@ const deleteProduct = async (req, res) => {
   try {
     const product = await productService.getProductById(id);
 
-    if (!product) return res.status(404).send("Product not found.");
+    if (!product) return res.status(404).json({ message: "Product not found." });
 
     // Check ownership or admin role
-    if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
-      return res.status(403).send("Access denied");
+    const isOwner = product.createdBy.toString() === user.id;
+    const isAdmin = user.roles.includes("ADMIN");
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // 🔥 Delete associated Cloudinary images
+    for (const url of product.imageUrls || []) {
+      const parts = url.split('/');
+      const filenameWithExt = parts[parts.length - 1];
+      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+
+      try {
+        await cloudinary.uploader.destroy(publicId, { invalidate: true });
+      } catch (err) {
+        console.warn('⚠️ Cloudinary deletion failed for', publicId, err.message);
+      }
     }
 
     await productService.deleteProduct(id);
 
-    res.send(`Product delete successful of id: ${id}`);
+    res.json({ message: `Product deleted successfully with ID: ${id}` });
   } catch (error) {
-    res.status(500).send(error.message);
+    console.error('🔥 Error deleting product:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
