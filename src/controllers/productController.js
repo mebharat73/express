@@ -64,8 +64,7 @@ const updateProduct = async (req, res) => {
   try {
     // Step 1: Fetch existing product
     const product = await Product.findById(id);
-if (!product) return res.status(404).json({ message: "Product not found." });
-
+    if (!product) return res.status(404).json({ message: "Product not found." });
 
     // Step 2: Authorization
     const isOwner = product.createdBy.toString() === user.id;
@@ -93,20 +92,22 @@ if (!product) return res.status(404).json({ message: "Product not found." });
       uploadedImageUrls = uploadResults.map(file => file.secure_url);
     }
 
-    // Step 5: Identify and delete removed images from Cloudinary
-    const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
-    await Promise.all(
-      removedImages.map(async (url) => {
-        const filename = url.split("/").pop().split(".")[0];
-        const publicId = `${CLOUDINARY_FOLDER}/${filename}`;
-        try {
-          await cloudinary.uploader.destroy(publicId, { invalidate: true });
-          console.log(`✅ Deleted: ${publicId}`);
-        } catch (err) {
-          console.warn(`⚠️ Failed to delete ${publicId}: ${err.message}`);
-        }
-      })
-    );
+    // Step 5: Identify and delete removed images from Cloudinary only if new images uploaded
+    if (uploadedImageUrls.length > 0) {
+      const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
+      await Promise.all(
+        removedImages.map(async (url) => {
+          const filename = url.split("/").pop().split(".")[0];
+          const publicId = `${CLOUDINARY_FOLDER}/${filename}`;
+          try {
+            await cloudinary.uploader.destroy(publicId, { invalidate: true });
+            console.log(`✅ Deleted: ${publicId}`);
+          } catch (err) {
+            console.warn(`⚠️ Failed to delete ${publicId}: ${err.message}`);
+          }
+        })
+      );
+    }
 
     // Step 6: Combine final image URLs
     const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
@@ -136,6 +137,7 @@ if (!product) return res.status(404).json({ message: "Product not found." });
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 const deleteProduct = async (req, res) => {
   const id = req.params.id;
