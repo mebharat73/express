@@ -33,6 +33,10 @@ const productSchema = new mongoose.Schema({
   imageUrls: {
     type: [String],
   },
+  imagePublicIds: {
+    type: [String], // ✅ This line is required for deletions
+    default: [],
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
