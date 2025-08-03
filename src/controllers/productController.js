@@ -152,13 +152,26 @@ const deleteProduct = async (req, res) => {
 
     // Delete product images from Cloudinary
     if (product.imageUrls && product.imageUrls.length > 0) {
-      const deletePromises = product.imageUrls.map((url) => {
-        const filename = url.split("/").pop().split(".")[0];
-        const publicId = `${CLOUDINARY_FOLDER}/${filename}`;
+      const deletePromises = product.imageUrls.map(async (url) => {
+        try {
+          const publicId = url
+            .split("/")
+            .slice(url.split("/").indexOf(CLOUDINARY_FOLDER))
+            .join("/")
+            .split(".")
+            .slice(0, -1)
+            .join(".");
 
-        return cloudinary.uploader.destroy(publicId, { invalidate: true })
-          .then(() => console.log(`✅ Deleted image: ${publicId}`))
-          .catch((err) => console.warn(`⚠️ Failed to delete image: ${publicId}`, err.message));
+          if (!publicId) {
+            console.warn("⚠️ Skipping image deletion due to missing publicId for:", url);
+            return;
+          }
+
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+          console.log(`✅ Deleted image: ${publicId}`);
+        } catch (err) {
+          console.warn(`⚠️ Failed to delete image for URL: ${url}`, err.message);
+        }
       });
 
       await Promise.all(deletePromises);
@@ -173,6 +186,7 @@ const deleteProduct = async (req, res) => {
     res.status(500).send(error.message);
   }
 };
+
 
 
 const getCategories = async (req, res) => {
