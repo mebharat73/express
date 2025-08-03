@@ -150,28 +150,30 @@ const deleteProduct = async (req, res) => {
       return res.status(403).send("Access denied");
     }
 
-    // Delete images from Cloudinary
-    for (const url of product.imageUrls || []) {
-      const parts = url.split('/');
-      const filenameWithExt = parts[parts.length - 1];
-      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+    // Delete product images from Cloudinary
+    if (product.imageUrls && product.imageUrls.length > 0) {
+      const deletePromises = product.imageUrls.map((url) => {
+        const filename = url.split("/").pop().split(".")[0];
+        const publicId = `${CLOUDINARY_FOLDER}/${filename}`;
 
-      try {
-        await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        console.log(`Deleted Cloudinary image: ${publicId}`);
-      } catch (err) {
-        console.warn(`Failed to delete Cloudinary image: ${publicId}`, err.message);
-      }
+        return cloudinary.uploader.destroy(publicId, { invalidate: true })
+          .then(() => console.log(`✅ Deleted image: ${publicId}`))
+          .catch((err) => console.warn(`⚠️ Failed to delete image: ${publicId}`, err.message));
+      });
+
+      await Promise.all(deletePromises);
     }
 
     // Delete product from DB
     await productService.deleteProduct(id);
 
-    res.send(`Product delete successful of id: ${id}`);
+    res.send(`Product deleted successfully with ID: ${id}`);
   } catch (error) {
+    console.error("❌ Error in deleteProduct:", error);
     res.status(500).send(error.message);
   }
 };
+
 
 const getCategories = async (req, res) => {
   const categories = await productService.getCategories();
