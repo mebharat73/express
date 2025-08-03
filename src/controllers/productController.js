@@ -151,19 +151,36 @@ const deleteProduct = async (req, res) => {
       return res.status(403).send("Access denied");
     }
 
-    // ✅ Use stored public IDs for deletion
-    for (const publicId of product.imagePublicIds || []) {
-      try {
-        await cloudinary.uploader.destroy(publicId, { invalidate: true });
-        console.log(`✅ Deleted from Cloudinary: ${publicId}`);
-      } catch (err) {
-        console.warn(`⚠️ Failed to delete ${publicId}:`, err.message);
+    // Delete Cloudinary images by public IDs if available
+    if (product.imagePublicIds && product.imagePublicIds.length > 0) {
+      for (const publicId of product.imagePublicIds) {
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+          console.log(`✅ Deleted from Cloudinary: ${publicId}`);
+        } catch (err) {
+          console.warn(`⚠️ Failed to delete ${publicId}:`, err.message);
+        }
       }
+    } else if (product.imageUrls && product.imageUrls.length > 0) {
+      // Fallback: parse public IDs from image URLs if public IDs are missing
+      for (const url of product.imageUrls) {
+        const parts = url.split('/');
+        const filenameWithExt = parts[parts.length - 1];
+        const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
+        try {
+          await cloudinary.uploader.destroy(publicId, { invalidate: true });
+          console.log(`✅ Deleted from Cloudinary (fallback): ${publicId}`);
+        } catch (err) {
+          console.warn(`⚠️ Failed to delete ${publicId} (fallback):`, err.message);
+        }
+      }
+    } else {
+      console.log("⚠️ No images found to delete from Cloudinary");
     }
 
     await productService.deleteProduct(id);
 
-    res.send(`Product delete successful of id: ${id}`);
+    res.send(`Product deleted successfully with id: ${id}`);
   } catch (error) {
     console.error("🔥 Error deleting product:", error);
     res.status(500).send(error.message);
