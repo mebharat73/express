@@ -1,4 +1,5 @@
 import { ROLE_ADMIN } from "../constants/roles.js";
+import { v2 as cloudinary } from 'cloudinary';
 import { formatProductData } from "../helpers/dataFormatter.js";
 import productService from "../services/productService.js";
 import Product from "../models/Product.js"
