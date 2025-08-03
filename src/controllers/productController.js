@@ -137,56 +137,41 @@ if (!product) return res.status(404).json({ message: "Product not found." });
 };
 
 const deleteProduct = async (req, res) => {
-  const id = req.params.id;
+  const { id } = req.params;
   const user = req.user;
 
   try {
-    // Step 1: Fetch the product by ID
     const product = await productService.getProductById(id);
-
-    // Check if product exists
     if (!product) return res.status(404).send("Product not found.");
 
-    // Step 2: Check ownership or admin role
     if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
       return res.status(403).send("Access denied");
     }
 
-    // Step 3: Delete product images from Cloudinary (aligned with deleteItem)
-    if (product.imageUrls && product.imageUrls.length > 0) {
-      const deletePromises = product.imageUrls.map(async (url) => {
-        try {
-          const parts = url.split('/');
-          const filenameWithExt = parts[parts.length - 1]; // Extract filename with extension
-          const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`; // Use this to form publicId
+    // Delete associated Cloudinary images FIRST
+    for (const url of product.imageUrls || []) {
+      const parts = url.split('/');
+      const filenameWithExt = parts.pop();
+      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
 
-          if (!publicId) {
-            console.warn("⚠️ Skipping image deletion due to missing publicId for:", url);
-            return;
-          }
-
-          // Call Cloudinary's destroy method to delete the image
-          await cloudinary.uploader.destroy(publicId, { invalidate: true });
-          console.log(`✅ Deleted image: ${publicId}`);
-        } catch (err) {
-          console.warn(`⚠️ Failed to delete image for URL: ${url}`, err.message);
-        }
-      });
-
-      // Wait for all image deletion promises to complete
-      await Promise.all(deletePromises);
+      try {
+        console.log("Deleting from Cloudinary:", publicId);
+        await cloudinary.uploader.destroy(publicId, { invalidate: true });
+      } catch (err) {
+        console.warn("⚠️ Cloudinary deletion failed for", publicId, err.message);
+      }
     }
 
-    // Step 4: Delete product from database
+    // THEN delete the product from database
     await productService.deleteProduct(id);
 
-    // Send success response
     res.send(`Product deleted successfully with ID: ${id}`);
   } catch (error) {
     console.error("❌ Error in deleteProduct:", error);
     res.status(500).send(error.message);
   }
 };
+
 
 
 const getCategories = async (req, res) => {
