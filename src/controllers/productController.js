@@ -136,54 +136,90 @@ if (!product) return res.status(404).json({ message: "Product not found." });
   }
 };
 
-const deleteProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   const id = req.params.id;
   const user = req.user;
+  const files = req.files;
+  const input = req.body;
 
   try {
-    const product = await productService.getProductById(id);
+    // Step 1: Fetch existing product
+    const product = await Product.findById(id);
+    if (!product) return res.status(404).json({ message: "Product not found." });
 
-    if (!product) return res.status(404).send("Product not found.");
-
-    // Check ownership or admin role
-    if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
-      return res.status(403).send("Access denied");
+    // Step 2: Authorization
+    const isOwner = product.createdBy.toString() === user.id;
+    const isAdmin = user.roles.includes(ROLE_ADMIN);
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
-    // Delete product images from Cloudinary
-    if (product.imageUrls && product.imageUrls.length > 0) {
-      const deletePromises = product.imageUrls.map(async (url) => {
+    // Step 3: Parse existing image URLs (if provided)
+    let existingImageUrls = [];
+    try {
+      if (input.existingImages) {
+        existingImageUrls = Array.isArray(input.existingImages)
+          ? input.existingImages
+          : JSON.parse(input.existingImages);
+      }
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid format for existingImages" });
+    }
+
+    // Step 4: Upload new images to Cloudinary
+    let uploadedImageUrls = [];
+    if (files?.length > 0) {
+      const uploadResults = await uploadFile(files); // expects [{ secure_url }]
+      uploadedImageUrls = uploadResults.map(file => file.secure_url);
+    }
+
+    // Step 5: Identify and delete removed images from Cloudinary
+    const removedImages = product.imageUrls.filter(url => !existingImageUrls.includes(url));
+    await Promise.all(
+      removedImages.map(async (url) => {
+        const publicId = url
+          .split("/")
+          .slice(url.split("/").indexOf(CLOUDINARY_FOLDER))
+          .join("/")
+          .split(".")
+          .slice(0, -1)
+          .join(".");
         try {
-          const publicId = url
-            .split("/")
-            .slice(url.split("/").indexOf(CLOUDINARY_FOLDER))
-            .join("/")
-            .split(".")
-            .slice(0, -1)
-            .join(".");
-
-          if (!publicId) {
-            console.warn("⚠️ Skipping image deletion due to missing publicId for:", url);
-            return;
-          }
-
+          console.log(`Attempting to delete image: ${publicId}`);
           await cloudinary.uploader.destroy(publicId, { invalidate: true });
-          console.log(`✅ Deleted image: ${publicId}`);
+          console.log(`✅ Deleted: ${publicId}`);
         } catch (err) {
-          console.warn(`⚠️ Failed to delete image for URL: ${url}`, err.message);
+          console.warn(`⚠️ Failed to delete ${publicId}: ${err.message}`);
         }
-      });
+      })
+    );
 
-      await Promise.all(deletePromises);
+    // Step 6: Combine final image URLs
+    const finalImageUrls = [...existingImageUrls, ...uploadedImageUrls];
+
+    // Step 7: Update allowed fields
+    const allowedFields = [
+      "title", "name", "price", "stock", "brand", "category", "description"
+    ];
+    for (const field of allowedFields) {
+      if (input[field] !== undefined) {
+        product[field] = ["price", "stock"].includes(field)
+          ? parseFloat(input[field])
+          : input[field];
+      }
     }
 
-    // Delete product from DB
-    await productService.deleteProduct(id);
+    product.imageUrls = finalImageUrls;
+    product.updatedAt = new Date();
 
-    res.send(`Product deleted successfully with ID: ${id}`);
+    // Step 8: Save and respond
+    await product.save();
+
+    res.status(200).json({ message: "Product updated successfully", product });
+
   } catch (error) {
-    console.error("❌ Error in deleteProduct:", error);
-    res.status(500).send(error.message);
+    console.error("❌ Error in updateProduct:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
