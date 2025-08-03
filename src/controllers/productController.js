@@ -137,37 +137,35 @@ if (!product) return res.status(404).json({ message: "Product not found." });
 };
 
 const deleteProduct = async (req, res) => {
-  const { id } = req.params;
+  const id = req.params.id;
   const user = req.user;
 
   try {
     const product = await productService.getProductById(id);
+
     if (!product) return res.status(404).send("Product not found.");
 
-    if (product.createdBy.toString() !== user.id && !user.roles.includes("ADMIN")) {
+    const isOwner = product.createdBy.toString() === user.id;
+    const isAdmin = user.roles.includes("ADMIN");
+    if (!isOwner && !isAdmin) {
       return res.status(403).send("Access denied");
     }
 
-    // Delete associated Cloudinary images FIRST
-    for (const url of product.imageUrls || []) {
-      const parts = url.split('/');
-      const filenameWithExt = parts.pop();
-      const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`;
-
+    // ✅ Use stored public IDs for deletion
+    for (const publicId of product.imagePublicIds || []) {
       try {
-        console.log("Deleting from Cloudinary:", publicId);
         await cloudinary.uploader.destroy(publicId, { invalidate: true });
+        console.log(`✅ Deleted from Cloudinary: ${publicId}`);
       } catch (err) {
-        console.warn("⚠️ Cloudinary deletion failed for", publicId, err.message);
+        console.warn(`⚠️ Failed to delete ${publicId}:`, err.message);
       }
     }
 
-    // THEN delete the product from database
     await productService.deleteProduct(id);
 
-    res.send(`Product deleted successfully with ID: ${id}`);
+    res.send(`Product delete successful of id: ${id}`);
   } catch (error) {
-    console.error("❌ Error in deleteProduct:", error);
+    console.error("🔥 Error deleting product:", error);
     res.status(500).send(error.message);
   }
 };
