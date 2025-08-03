@@ -152,15 +152,14 @@ const deleteProduct = async (req, res) => {
       return res.status(403).send("Access denied");
     }
 
-    // Step 3: Delete product images from Cloudinary
+    // Step 3: Delete product images from Cloudinary (aligned with deleteItem)
     if (product.imageUrls && product.imageUrls.length > 0) {
       const deletePromises = product.imageUrls.map(async (url) => {
         try {
-          // Extract public ID correctly from the Cloudinary URL
           const parts = url.split('/');
-          const publicId = parts.slice(parts.indexOf(CLOUDINARY_FOLDER) + 1, parts.length - 1).join('/');
-          console.log(`Attempting to delete image with publicId: ${publicId}`);
-          
+          const filenameWithExt = parts[parts.length - 1]; // Extract filename with extension
+          const publicId = `${CLOUDINARY_FOLDER}/${filenameWithExt.split('.')[0]}`; // Use this to form publicId
+
           if (!publicId) {
             console.warn("⚠️ Skipping image deletion due to missing publicId for:", url);
             return;
