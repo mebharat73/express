@@ -21,14 +21,9 @@ export function formatProductData(data) {
     brand: data.brand,
     category: data.category,
     imageUrls: data.imageUrls,
-    imagePublicIds: data.imagePublicIds,
+    imagePublicIds: data.imagePublicIds, // ✅ Add this line
+    createdBy: data.createdBy?._id || data.createdBy || null,
     createdAt: data.createdAt,
-    createdBy: {
-      id: data.createdBy?._id || data.createdBy || null,
-      name: data.createdBy?.name || null,
-      phone: data.createdBy?.phone || null,
-    },
   };
 }
-
 
