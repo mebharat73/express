@@ -29,16 +29,10 @@ const getAllProducts = async (query, userId) => {
   }
 
   if (min || max) {
-  filters.price = {};
-
-  const minVal = parseFloat(min);
-  if (!isNaN(minVal)) filters.price.$gte = minVal;
-
-  const maxVal = parseFloat(max);
-  if (!isNaN(maxVal)) filters.price.$lte = maxVal;
-
-  if (Object.keys(filters.price).length === 0) delete filters.price;
-}
+    filters.price = {};
+    if (min) filters.price.$gte = parseFloat(min);
+    if (max) filters.price.$lte = parseFloat(max);
+  }
 
   if (userId) filters.createdBy = userId;
 
@@ -53,7 +47,7 @@ const getAllProducts = async (query, userId) => {
 };
 
 const getProductById = async (id) => {
-  const product = await Product.findById(id).populate('createdBy', 'name phone');
+  const product = await Product.findById(id).populate('createdBy', 'name phone _id');
 
 
   return formatProductData(product);
