@@ -53,7 +53,8 @@ const getAllProducts = async (query, userId) => {
 };
 
 const getProductById = async (id) => {
-  const product = await Product.findById(id).populate('createdBy', '_id');
+  const product = await Product.findById(id).populate('createdBy', 'name phone');
+
 
   return formatProductData(product);
 };
