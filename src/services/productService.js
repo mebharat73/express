@@ -29,10 +29,16 @@ const getAllProducts = async (query, userId) => {
   }
 
   if (min || max) {
-    filters.price = {};
-    if (min) filters.price.$gte = parseFloat(min);
-    if (max) filters.price.$lte = parseFloat(max);
-  }
+  filters.price = {};
+
+  const minVal = parseFloat(min);
+  if (!isNaN(minVal)) filters.price.$gte = minVal;
+
+  const maxVal = parseFloat(max);
+  if (!isNaN(maxVal)) filters.price.$lte = maxVal;
+
+  if (Object.keys(filters.price).length === 0) delete filters.price;
+}
 
   if (userId) filters.createdBy = userId;
 
@@ -56,20 +62,16 @@ const getProductById = async (id) => {
 const createProduct = async (data, files, userId) => {
   const uploadedFiles = await uploadFile(files); // returns array of { secure_url, public_id }
 
-  // Only call Gemini if no description was provided by the user
-  const finalDescription = data.description?.trim()
-    ? data.description
-    : await promptGemini(data);
+  const geminiResponse = await promptGemini(data);
 
   return await Product.create({
     ...data,
-    description: finalDescription,
+    description: geminiResponse,
     createdBy: userId,
     imageUrls: uploadedFiles.map(file => file.secure_url),      // ✅ keep secure URLs
     imagePublicIds: uploadedFiles.map(file => file.public_id),  // ✅ store public IDs
   });
 };
-
 
 
 const updateProduct = async (id, data, files) => {
