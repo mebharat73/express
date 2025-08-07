@@ -24,6 +24,7 @@ export function formatProductData(data) {
     imagePublicIds: data.imagePublicIds, // ✅ Add this line
     createdBy: data.createdBy?._id || data.createdBy || null,
     createdAt: data.createdAt,
+    ownerPhone: data.createdBy?.phone || null, // Add the owner's phone number here
   };
 }
 
