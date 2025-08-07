@@ -68,4 +68,7 @@ router.put("/:id", auth, roleBasedAuth(ROLE_MERCHANT), upload.array('imageFiles'
  */
 router.delete("/:id", auth, deleteProduct);
 
+// ✅ Add contact route BEFORE `/:id`
+router.get("/:id/contact", getProductContact); // <-- correct position
+
 export default router;

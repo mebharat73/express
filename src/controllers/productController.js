@@ -226,6 +226,26 @@ const getProductsByBrand = async (req, res) => {
   res.json(formattedProducts);
 };
 
+const getProductContact = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const product = await Product.findById(id).populate('createdBy', 'phone');
+
+    if (!product || !product.createdBy) {
+      return res.status(404).json({ message: "Product or creator not found" });
+    }
+
+    res.json({
+      contactNumber: product.createdBy.phone,
+      productId: product._id,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 export {
   getAllProducts,
   getProductById,
@@ -237,4 +257,5 @@ export {
   getBrands,
   getProductsByCategory,
   getProductsByBrand,
+  getProductContact,
 };
