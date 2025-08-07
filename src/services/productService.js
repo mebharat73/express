@@ -47,11 +47,7 @@ const getAllProducts = async (query, userId) => {
 };
 
 const getProductById = async (id) => {
-  const product = await Product.findById(id).populate('createdBy', '_id phone');
-
-  console.log("Populated Product:", product); // <-- Add this for debugging
-
-  return formatProductData(product);
+  return await Product.findById(id).populate('createdBy', '_id phone'); // ✅ just populate, don't format
 };
 
 

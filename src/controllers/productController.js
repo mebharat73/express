@@ -35,7 +35,7 @@ const getProductById = async (req, res) => {
 
     if (!product) return res.status(404).send("Product not found.");
 
-    res.json(formatProductData(product));
+    res.json(formatProductData(product)); // ✅ only format here
   } catch (error) {
     res.status(500).send(error.message);
   }
