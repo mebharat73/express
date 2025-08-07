@@ -47,8 +47,9 @@ const getAllProducts = async (query, userId) => {
 };
 
 const getProductById = async (id) => {
-  // Populate the product owner's _id and phone number
   const product = await Product.findById(id).populate('createdBy', '_id phone');
+
+  console.log("Populated Product:", product); // <-- Add this for debugging
 
   return formatProductData(product);
 };
