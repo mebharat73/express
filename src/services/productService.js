@@ -46,12 +46,12 @@ const getAllProducts = async (query, userId) => {
   return products;
 };
 
+// services/productService.js
 const getProductById = async (id) => {
   const product = await Product.findById(id).populate('createdBy', '_id phone');
+  console.log("✅ Populated createdBy:", product?.createdBy); // Debug output
 
-  console.log("Populated Product (raw):", product); // Log the populated product
-
-  return product; // Return without formatting first to inspect the raw data
+  return product; // Don't format here yet
 };
 
 

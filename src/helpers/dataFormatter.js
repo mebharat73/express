@@ -12,19 +12,23 @@ export function formatUserData(data) {
 }
 
 export function formatProductData(data) {
+  const createdByObj = data.createdBy && typeof data.createdBy === 'object' ? data.createdBy : {};
+
   return {
     id: data._id,
-    _id: data._id, // Optional for backend/internal use
+    _id: data._id,
     name: data.name,
     description: data.description,
     price: data.price,
     brand: data.brand,
     category: data.category,
     imageUrls: data.imageUrls,
-    imagePublicIds: data.imagePublicIds, // ✅ Add this line
-    createdBy: data.createdBy?._id || data.createdBy || null,
+    imagePublicIds: data.imagePublicIds,
+    createdBy: createdByObj._id || data.createdBy || null,
     createdAt: data.createdAt,
-    ownerPhone: data.createdBy?.phone || null, // Add the owner's phone number here
+    ownerPhone: createdByObj.phone || null,
   };
 }
+
+
 
