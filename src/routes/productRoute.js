@@ -10,6 +10,7 @@ import {
   getProductsByCategory,
   getProductsByBrand,
   getBrands,
+  getProductContact, 
 } from "../controllers/productController.js";
 import auth from "../middlewares/auth.js";
 import roleBasedAuth from "../middlewares/roleBasedAuth.js";
