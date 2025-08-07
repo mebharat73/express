@@ -42,7 +42,28 @@ const productSchema = new mongoose.Schema({
     required: true,
     ref: "User",
   },
+
+  ratings: [
+    {
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      value: { type: Number, min: 1, max: 5 },
+    }
+  ],
 });
+
+// Virtual field to calculate average rating
+productSchema.virtual("averageRating").get(function () {
+  if (!this.ratings || this.ratings.length === 0) return 0; // Safeguard against empty ratings array
+  const sum = this.ratings.reduce((acc, rating) => acc + rating.value, 0);
+  return sum / this.ratings.length;
+});
+
+// Ensure virtuals are included in JSON output
+productSchema.set('toJSON', {
+  virtuals: true,
+  versionKey: false,  // Optional: hide __v field
+});
+
 
 const model = mongoose.model("Product", productSchema);
 

@@ -72,4 +72,39 @@ router.delete("/:id", auth, deleteProduct);
 // ✅ Add contact route BEFORE `/:id`
 router.get("/:id/contact", getProductContact); // <-- correct position
 
+router.post('/:id/rate', auth, async (req, res) => {
+  const { id } = req.params;
+  const { value } = req.body;
+
+  if (value < 1 || value > 5) {
+    return res.status(400).json({ message: "Rating must be between 1 and 5" });
+  }
+
+  try {
+    const product = await Product.findById(id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const existingRating = product.ratings.find(
+      (rating) => rating.userId.toString() === req.user._id.toString()
+    );
+
+    if (existingRating) {
+      existingRating.value = value;
+    } else {
+      product.ratings.push({ userId: req.user._id, value });
+    }
+
+    await product.save();
+
+    return res.status(200).json({
+      message: "Rating submitted successfully",
+      averageRating: product.averageRating,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error submitting rating" });
+  }
+});
+
+
 export default router;
