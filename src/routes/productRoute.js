@@ -77,35 +77,47 @@ router.post('/:id/rate', auth, async (req, res) => {
   const { id } = req.params;
   const { value } = req.body;
 
+  // Validate the rating value
   if (value < 1 || value > 5) {
     return res.status(400).json({ message: "Rating must be between 1 and 5" });
   }
 
   try {
+    // Find the product by ID
     const product = await Product.findById(id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+    // Check if the user has already rated the product
     const existingRating = product.ratings.find(
       (rating) => rating.userId.toString() === req.user._id.toString()
     );
 
+    // If the user has rated before, update their rating
     if (existingRating) {
       existingRating.value = value;
     } else {
+      // If not, add a new rating
       product.ratings.push({ userId: req.user._id, value });
     }
 
+    // Recalculate the average rating
+    const totalRating = product.ratings.reduce((acc, rating) => acc + rating.value, 0);
+    const averageRating = totalRating / product.ratings.length;
+
+    // Update the average rating of the product
+    product.averageRating = averageRating.toFixed(1);
+
+    // Save the product with the updated rating and average
     await product.save();
 
     return res.status(200).json({
       message: "Rating submitted successfully",
-      averageRating: product.averageRating,
+      averageRating: product.averageRating,  // Return the updated average rating
     });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Error submitting rating" });
   }
 });
-
 
 export default router;
