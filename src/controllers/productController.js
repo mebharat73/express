@@ -8,14 +8,21 @@ const CLOUDINARY_FOLDER = "nodejs-20250302";
 
 
 const getAllProducts = async (req, res) => {
-  const products = await productService.getAllProducts(req.query);
+  try {
+    const products = await productService.getAllProducts(req.query);
+    const userId = req.user?._id;
 
-  const formattedProducts = products.map((product) =>
-    formatProductData(product)
-  );
+    const formattedProducts = products.map((product) =>
+      formatProductData(product, userId)
+    );
 
-  res.json(formattedProducts);
+    res.json(formattedProducts);
+  } catch (error) {
+    console.error("Failed to get products:", error);
+    res.status(500).json({ message: "Failed to get products" });
+  }
 };
+
 
 const getProductsByUser = async (req, res) => {
   const products = await productService.getAllProducts(req.query, req.user.id);
@@ -35,11 +42,13 @@ const getProductById = async (req, res) => {
 
     if (!product) return res.status(404).send("Product not found.");
 
-    res.json(formatProductData(product));
+    const userId = req.user?._id;
+    res.json(formatProductData(product, userId));
   } catch (error) {
     res.status(500).send(error.message);
   }
 };
+
 
 const createProduct = async (req, res) => {
   const userId = req.user.id;

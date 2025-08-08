@@ -27,7 +27,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * Method: GET
  * Get all products
  */
-router.get("/", getAllProducts);
+router.get("/", auth, getAllProducts);
 
 // /api/products/users
 router.get("/users", auth, getProductsByUser);
@@ -43,7 +43,7 @@ router.get("/brand/:brand", getProductsByBrand);
  * Method: GET
  * Get product by id
  */
-router.get("/:id", getProductById);
+router.get("/:id", auth, getProductById);
 
 /**
  * URL: /api/products

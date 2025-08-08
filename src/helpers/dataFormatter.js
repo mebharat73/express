@@ -11,19 +11,33 @@ export function formatUserData(data) {
   };
 }
 
-export function formatProductData(data) {
+export function formatProductData(data, userId = null) {
+  let userRating = 0;
+
+  if (userId && data.ratings && Array.isArray(data.ratings)) {
+    const found = data.ratings.find(
+      (r) => r.userId.toString() === userId.toString()
+    );
+    if (found) {
+      userRating = found.value;
+    }
+  }
+
   return {
     id: data._id,
-    _id: data._id, // Optional for backend/internal use
+    _id: data._id,
     name: data.name,
     description: data.description,
     price: data.price,
     brand: data.brand,
     category: data.category,
     imageUrls: data.imageUrls,
-    imagePublicIds: data.imagePublicIds, // ✅ Add this line
+    imagePublicIds: data.imagePublicIds,
     createdBy: data.createdBy?._id || data.createdBy || null,
     createdAt: data.createdAt,
+    rating: data.averageRating || 0,        // Optional: if you calculate average in model
+    userRating,                             // ✅ Include the user's rating
   };
 }
+
 
