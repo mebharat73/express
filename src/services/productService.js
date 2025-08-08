@@ -56,16 +56,20 @@ const getProductById = async (id) => {
 const createProduct = async (data, files, userId) => {
   const uploadedFiles = await uploadFile(files); // returns array of { secure_url, public_id }
 
-  const geminiResponse = await promptGemini(data);
+  // Use user-provided description or generate one via Gemini
+  const description = data.description?.trim()
+    ? data.description
+    : await promptGemini(data); // fallback only if empty
 
   return await Product.create({
     ...data,
-    description: geminiResponse,
+    description,
     createdBy: userId,
     imageUrls: uploadedFiles.map(file => file.secure_url),      // ✅ keep secure URLs
     imagePublicIds: uploadedFiles.map(file => file.public_id),  // ✅ store public IDs
   });
 };
+
 
 
 const updateProduct = async (id, data, files) => {
