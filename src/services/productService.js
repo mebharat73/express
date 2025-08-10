@@ -8,7 +8,14 @@ import { formatProductData } from "../helpers/dataFormatter.js";
 // 2. Limit: Max no. of items
 
 const getAllProducts = async (query, userId) => {
-  const sort = JSON.parse(query.sort || JSON.stringify({ createdAt: -1 })); // ✅ default sort
+  let sort;
+  try {
+    sort = query.sort && query.sort !== 'undefined'
+      ? JSON.parse(query.sort)
+      : { createdAt: -1 };
+  } catch (e) {
+    sort = { createdAt: -1 };
+  } // ✅ default sort
   const limit = parseInt(query.limit) || 12;
   const offset = parseInt(query.offset) || 0;
   const filters = {};
