@@ -1,5 +1,7 @@
 import orderService from "../services/orderService.js";
 import productService from '../services/productService.js';
+import Order from "../models/Order.js"; // ✅ To query orders
+import { v2 as cloudinary } from 'cloudinary';
 
 const getAllOrders = async (req, res) => {
   if (!req.user?.roles?.includes("ADMIN")) {
