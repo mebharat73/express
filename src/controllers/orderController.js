@@ -61,6 +61,7 @@ const createOrder = async (req, res) => {
   }
 };
 
+
 const updateOrderStatus = async (req, res) => {
   const id = req.params.id;
   const { status, transactionId } = req.body;
@@ -68,12 +69,45 @@ const updateOrderStatus = async (req, res) => {
   if (!status) return res.status(422).send("Order status is required.");
 
   try {
+    // 1. Update order status using your existing service
     const updatedOrder = await orderService.updateOrderStatus(id, status, transactionId);
+
+    // 2. After update, check for 'DELIVERED' status
+    if (status === "DELIVERED") {
+      const order = await Order.findById(id).populate("orderItems.product");
+
+      for (const item of order.orderItems) {
+        const product = item.product;
+
+        if (product.stock === 0) {
+          console.log(`🧹 Deleting out-of-stock product: ${product.name}`);
+
+          // Delete Cloudinary images
+          if (product.imagePublicIds && product.imagePublicIds.length > 0) {
+            for (const publicId of product.imagePublicIds) {
+              try {
+                await cloudinary.uploader.destroy(publicId, { invalidate: true });
+                console.log(`✅ Deleted Cloudinary image: ${publicId}`);
+              } catch (err) {
+                console.warn(`⚠️ Cloudinary deletion failed: ${publicId}`, err.message);
+              }
+            }
+          }
+
+          // Delete product from DB
+          await productService.deleteProduct(product._id.toString());
+          console.log(`🗑️ Product ${product._id} deleted.`);
+        }
+      }
+    }
+
     res.json(updatedOrder);
   } catch (error) {
+    console.error("🔥 Error updating order status:", error);
     res.status(error.statusCode || 500).send(error.message);
   }
 };
+
 
 
 const deleteOrder = async (req, res) => {
